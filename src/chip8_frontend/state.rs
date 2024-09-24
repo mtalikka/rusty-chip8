@@ -35,7 +35,6 @@ impl EventHandler<GameError> for State {
         Ok(())
     }
 
-
     #[inline]
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         let canvas =

@@ -74,9 +74,6 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    // pub fn new() -> Self {
-    // }
-
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {
         match self.mem[self.pc as usize] {
