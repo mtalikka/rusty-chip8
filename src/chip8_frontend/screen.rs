@@ -1,5 +1,5 @@
-use chip8_lib::display;
 use ggez::graphics::Color;
+use chip8_lib::display;
 
 // Simulated pixel grid resolution
 pub const GRID_SIZE: (usize, usize) = (display::X_RES, display::Y_RES);
