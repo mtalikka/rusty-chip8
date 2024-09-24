@@ -8,7 +8,7 @@ pub struct DisplayController {
 impl Default for DisplayController {
     fn default() -> Self {
         Self {
-            frame_buffer : [0; X_RES * Y_RES],
+            frame_buffer: [0; X_RES * Y_RES],
         }
     }
 }
