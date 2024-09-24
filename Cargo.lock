@@ -2058,10 +2058,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "rusty-chip8"
+name = "rusty_chip8"
 version = "0.1.0"
 dependencies = [
  "ggez",
+ "thiserror",
 ]
 
 [[package]]

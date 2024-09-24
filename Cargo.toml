@@ -1,7 +1,16 @@
 [package]
-name = "rusty-chip8"
+name = "rusty_chip8"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "chip8_lib"
+path = "src/chip8_lib/lib.rs"
+
+[[bin]]
+name = "chip8_frontend"
+path = "src/chip8_frontend/bin.rs"
+
 [dependencies]
 ggez = "0.9.3"
+thiserror = "1.0.64"
