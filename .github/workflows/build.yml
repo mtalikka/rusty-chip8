@@ -1,4 +1,4 @@
-name: Rust
+name: Build
 
 on:
   push:
@@ -12,13 +12,15 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
-        sudo apt install -y libasound2-dev portaudio19-dev build-essential libpulse-dev libdbus-1-dev libudev-dev
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo apt install -y libasound2-dev portaudio19-dev build-essential libpulse-dev libdbus-1-dev libudev-dev
+        fi
     - name: Build
       run: cargo build --verbose
     - name: Run tests
