@@ -1,5 +1,13 @@
 use ggez::{
-    conf, error::{GameError,GameResult}, event::{self, EventHandler, EventLoop}, graphics, input::{gamepad::Event, keyboard::{KeyCode,KeyInput}}, Context, ContextBuilder
+    conf,
+    error::{GameError, GameResult},
+    event::{self, EventHandler, EventLoop},
+    graphics,
+    input::{
+        gamepad::Event,
+        keyboard::{KeyCode, KeyInput},
+    },
+    Context, ContextBuilder,
 };
 
 use crate::screen::*;
@@ -13,15 +21,14 @@ pub struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
-            frame_buffer : [0; GRID_SIZE.0 * GRID_SIZE.1],
-            emulation_paused : false,
+            frame_buffer: [0; GRID_SIZE.0 * GRID_SIZE.1],
+            emulation_paused: false,
         }
     }
 }
 
 impl State {
-    fn update_state(&mut self) {
-    }
+    fn update_state(&mut self) {}
 }
 
 impl EventHandler<GameError> for State {
@@ -37,8 +44,7 @@ impl EventHandler<GameError> for State {
 
     #[inline]
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        let canvas =
-            graphics::Canvas::from_frame(ctx, BG_COLOR);
+        let canvas = graphics::Canvas::from_frame(ctx, BG_COLOR);
         canvas.finish(ctx)?;
         ggez::timer::yield_now();
         Ok(())
@@ -54,15 +60,11 @@ impl EventHandler<GameError> for State {
         match input.keycode {
             Some(KeyCode::Space) => {
                 self.emulation_paused = match self.emulation_paused {
-                    true => {
-                        false
-                    },
-                    false => {
-                        true
-                    },
+                    true => false,
+                    false => true,
                 };
-            },
-            Some(KeyCode::Escape) => { _ctx.request_quit() },
+            }
+            Some(KeyCode::Escape) => _ctx.request_quit(),
             _ => (),
         }
         Ok(())
@@ -79,14 +81,16 @@ impl Default for EventController {
     fn default() -> Self {
         let (ctx_tmp, event_loop_tmp) = ContextBuilder::new("rusty-chip8", "Mikko")
             .window_setup(conf::WindowSetup::default().title("rusty-chip8"))
-            .window_mode(conf::WindowMode::default().dimensions(SCREEN_SIZE.0+1., SCREEN_SIZE.1+1.))
+            .window_mode(
+                conf::WindowMode::default().dimensions(SCREEN_SIZE.0 + 1., SCREEN_SIZE.1 + 1.),
+            )
             .build()
             .unwrap();
         let state_tmp = State::default();
         Self {
-            ctx : ctx_tmp,
-            event_loop : event_loop_tmp,
-            state : state_tmp,
+            ctx: ctx_tmp,
+            event_loop: event_loop_tmp,
+            state: state_tmp,
         }
     }
 }

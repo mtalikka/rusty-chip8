@@ -1,8 +1,8 @@
 pub mod screen;
 pub mod state;
 
-use chip8_lib::cpu::Cpu;
 use crate::state::EventController;
+use chip8_lib::cpu::Cpu;
 
 fn main() {
     let cpu = Cpu::default();
