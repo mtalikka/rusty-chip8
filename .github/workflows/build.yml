@@ -10,17 +10,31 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
-    runs-on: [ubuntu-latest, windows-latest, macos-latest]
-
+  ubuntu:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
-        if [ "$RUNNER_OS" == "Linux" ]; then
-          sudo apt install -y libasound2-dev portaudio19-dev build-essential libpulse-dev libdbus-1-dev libudev-dev
-        fi
+        sudo apt install -y libasound2-dev portaudio19-dev build-essential libpulse-dev libdbus-1-dev libudev-dev
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
     - name: Run tests
