@@ -2,6 +2,8 @@ use thiserror::Error;
 
 use crate::display;
 
+const MEMORY_SIZE: usize = 4096;
+const REGISTER_COUNT: usize = 16;
 // Memory address from where the font is stored; by convention this is 0x50
 const FONT_START_ADDR: usize = 0x50;
 
@@ -45,9 +47,9 @@ pub struct Cpu {
     // Index register
     i: u16,
     // General purpose registers
-    reg: [u8; 16],
+    reg: [u8; REGISTER_COUNT],
     // Memory; 4kB
-    mem: [u8; 4096],
+    mem: [u8; MEMORY_SIZE],
     // Stack; holds maximum of 16 addresses
     stk: Vec<u16>,
     // Display controller
@@ -62,8 +64,8 @@ impl Default for Cpu {
             dt: 0,
             st: 0,
             i: 0,
-            reg: [0; 16],
-            mem: [0; 4096],
+            reg: [0; REGISTER_COUNT],
+            mem: [0; MEMORY_SIZE],
             stk: vec![],
             dct: display::DisplayController::default(),
         };
@@ -76,20 +78,25 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    // pub fn new() -> Self {
-    // }
-
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {
-        match self.mem[self.pc as usize] {
-            0x00E0 => self.cls(),
-            0x00EE => self.ret(),
-            ..u8::MAX => Err(CpuError::UnknownOpcodeError),
-            u8::MAX => Err(CpuError::UnknownOpcodeError),
+        let result: Result<(), CpuError>;
+        // Pack two contiguous 8-bit segments in memory into 16-bit instruction
+        let mut instruction: u16 = self.mem[self.pc as usize] as u16;
+        instruction <<= 8;
+        instruction |= self.mem[self.pc as usize + 1] as u16;
+        match instruction {
+            0x00E0 => { result = self.cls() },
+            0x00EE => { result = self.ret() },
+            ..u16::MAX => result = Err(CpuError::UnknownOpcodeError),
+            u16::MAX => result = Err(CpuError::UnknownOpcodeError),
         }
+        // Advance program counter
+        self.pc += 2;
+        result
     }
 
-    /// Opcode 0x00E0   -   CLS
+    /// Opcode 0x00E0 - CLS
     ///
     /// Clears the screen
     fn cls(&mut self) -> Result<(), CpuError> {
@@ -97,7 +104,7 @@ impl Cpu {
         Ok(())
     }
 
-    /// Opcode 0x00EE   -   RET
+    /// Opcode 0x00EE - RET
     ///
     /// The interpreter sets the program counter to the address at the top of the stack,
     /// then subtracts 1 from the stack pointer.
@@ -108,5 +115,28 @@ impl Cpu {
         }
         self.sp -= 1;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exec_routine_success() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0;
+        c.mem[1] = 0xE0;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2, "testing incrementation of program counter");
+    }
+
+    #[test]
+    #[should_panic]
+    fn exec_routine_failure() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xFF;
+        c.mem[1] = 0xFF;
+        c.exec_routine().unwrap();
     }
 }
