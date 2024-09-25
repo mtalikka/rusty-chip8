@@ -30,9 +30,11 @@ const FONT: [u8; 80] = [
 #[derive(Error, Debug)]
 pub enum CpuError {
     #[error("encountered unknown opcode")]
-    UnknownOpcodeError,
+    UnknownOpcode,
     #[error("attempted to pop from empty stack")]
-    EmptyStackError,
+    EmptyStack,
+    #[error("attempted to increment program counter beyond memory constraints")]
+    MemoryOutOfBounds,
 }
 
 pub struct Cpu {
@@ -88,11 +90,13 @@ impl Cpu {
         match instruction {
             0x00E0 => { result = self.cls() },
             0x00EE => { result = self.ret() },
-            ..u16::MAX => result = Err(CpuError::UnknownOpcodeError),
-            u16::MAX => result = Err(CpuError::UnknownOpcodeError),
+
+            ..u16::MAX => return Err(CpuError::UnknownOpcode),
+            u16::MAX => return Err(CpuError::UnknownOpcode),
         }
-        // Advance program counter
+        // Advance program counter by 16 bits
         self.pc += 2;
+        if self.pc >= MEMORY_SIZE as u16 {return Err(CpuError::MemoryOutOfBounds) }
         result
     }
 
@@ -111,7 +115,7 @@ impl Cpu {
     fn ret(&mut self) -> Result<(), CpuError> {
         match self.stk.pop() {
             Some(val) => self.pc = val,
-            None => return Err(CpuError::EmptyStackError),
+            None => return Err(CpuError::EmptyStack),
         }
         self.sp -= 1;
         Ok(())
@@ -122,21 +126,34 @@ impl Cpu {
 mod tests {
     use super::*;
 
+    // Executing a known opcode loaded to address 0x0000
     #[test]
     fn exec_routine_success() {
         let mut c = Cpu::default();
-        c.mem[0] = 0;
+        c.mem[0] = 0x00;
         c.mem[1] = 0xE0;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.pc, 2, "testing incrementation of program counter");
     }
 
+    // Executing an unknown opcode loaded to address 0x0000
     #[test]
     #[should_panic]
     fn exec_routine_failure() {
         let mut c = Cpu::default();
         c.mem[0] = 0xFF;
         c.mem[1] = 0xFF;
+        c.exec_routine().unwrap();
+    }
+
+    // Executing an unknown opcode loaded to address 0x0000
+    #[test]
+    #[should_panic]
+    fn exec_routine_out_of_memory() {
+        let mut c = Cpu::default();
+        c.pc = 4094;
+        c.mem[4094] = 0x00;
+        c.mem[4095] = 0xE0;
         c.exec_routine().unwrap();
     }
 }
