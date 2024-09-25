@@ -29,6 +29,8 @@ const FONT: [u8; 80] = [
 pub enum CpuError {
     #[error("encountered unknown opcode")]
     UnknownOpcodeError,
+    #[error("attempted to pop from empty stack")]
+    EmptyStackError,
 }
 
 pub struct Cpu {
@@ -80,8 +82,8 @@ impl Cpu {
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {
         match self.mem[self.pc as usize] {
-            0x00E0 => Ok(self.cls()),
-            0x00EE => Ok(self.ret()),
+            0x00E0 => self.cls(),
+            0x00EE => self.ret(),
             ..u8::MAX => Err(CpuError::UnknownOpcodeError),
             u8::MAX => Err(CpuError::UnknownOpcodeError),
         }
@@ -90,15 +92,21 @@ impl Cpu {
     /// Opcode 0x00E0   -   CLS
     ///
     /// Clears the screen
-    fn cls(&mut self) {
+    fn cls(&mut self) -> Result<(), CpuError> {
         self.dct.clear_screen();
+        Ok(())
     }
 
     /// Opcode 0x00EE   -   RET
     ///
     /// The interpreter sets the program counter to the address at the top of the stack,
     /// then subtracts 1 from the stack pointer.
-    fn ret(&mut self) {
+    fn ret(&mut self) -> Result<(), CpuError> {
+        match self.stk.pop() {
+            Some(val) => self.pc = val,
+            None => return Err(CpuError::EmptyStackError),
+        }
         self.sp -= 1;
+        Ok(())
     }
 }
