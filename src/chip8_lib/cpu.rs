@@ -90,22 +90,26 @@ impl Cpu {
         match instruction {
             0x00E0 => { result = self.cls() },
             0x00EE => { result = self.ret() },
-
+            0x1000..0x1FFF => { result = self.jp(instruction) },
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
-        // Advance program counter by 16 bits
-        self.pc += 2;
-        if self.pc >= MEMORY_SIZE as u16 {return Err(CpuError::MemoryOutOfBounds) }
         result
+    }
+
+    // Advance program counter by 16 bits
+    fn increment_pc(&mut self) -> Result<(), CpuError> {
+        self.pc += 2;
+        if self.pc >= MEMORY_SIZE as u16 {return Err(CpuError::MemoryOutOfBounds)}
+        Ok(())
     }
 
     /// Opcode 0x00E0 - CLS
     ///
-    /// Clears the screen
+    /// Clears the screen.
     fn cls(&mut self) -> Result<(), CpuError> {
         self.dct.clear_screen();
-        Ok(())
+        self.increment_pc()
     }
 
     /// Opcode 0x00EE - RET
@@ -118,6 +122,15 @@ impl Cpu {
             None => return Err(CpuError::EmptyStack),
         }
         self.sp -= 1;
+        Ok(())
+    }
+
+    /// Opcode 0x1nnn - JP
+    ///
+    /// The interpreter sets the program counter to nnn.
+    fn jp(&mut self, mut inst: u16) -> Result<(), CpuError> {
+        inst &= 0x0FFF;
+        self.pc = inst;
         Ok(())
     }
 }
@@ -136,7 +149,7 @@ mod tests {
         assert_eq!(c.pc, 2, "testing incrementation of program counter");
     }
 
-    // Executing an unknown opcode loaded to address 0x0000
+    // Executing an unknown opcodeloaded to address 0x0000
     #[test]
     #[should_panic]
     fn exec_routine_failure() {
@@ -146,7 +159,8 @@ mod tests {
         c.exec_routine().unwrap();
     }
 
-    // Executing an unknown opcode loaded to address 0x0000
+    // Executing a known opcode loaded to address 0xFFE,
+    // causing program counter to increment beyond available memory
     #[test]
     #[should_panic]
     fn exec_routine_out_of_memory() {
@@ -155,5 +169,15 @@ mod tests {
         c.mem[4094] = 0x00;
         c.mem[4095] = 0xE0;
         c.exec_routine().unwrap();
+    }
+
+    // Executing the jp instruction 
+    #[test]
+    fn exec_routine_jp() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x1B;
+        c.mem[1] = 0xEE;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 0xBEE, "testing executing of jp instruction");
     }
 }
