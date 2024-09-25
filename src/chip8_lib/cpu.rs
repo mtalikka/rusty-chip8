@@ -92,10 +92,10 @@ impl Cpu {
         instruction <<= 8;
         instruction |= self.mem[self.pc as usize + 1] as u16;
         match instruction {
-            0x00E0 => { result = self.cls() },
-            0x00EE => { result = self.ret() },
-            0x1000..0x1FFF => { result = self.jp(instruction) },
-            0x2000..0x2FFF => { result = self.call(instruction) },
+            0x00E0 => result = self.cls(),
+            0x00EE => result = self.ret(),
+            0x1000..0x1FFF => result = self.jp(instruction),
+            0x2000..0x2FFF => result = self.call(instruction),
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -106,7 +106,9 @@ impl Cpu {
     // Constraints: PC must not be greater 4096, as this exceeds the memory limit of 4KB.
     fn increment_pc(&mut self) -> Result<(), CpuError> {
         self.pc += 2;
-        if self.pc >= MEMORY_SIZE as u16 {return Err(CpuError::MemoryOutOfBounds)}
+        if self.pc >= MEMORY_SIZE as u16 {
+            return Err(CpuError::MemoryOutOfBounds);
+        }
         Ok(())
     }
 
@@ -114,7 +116,9 @@ impl Cpu {
     // Constraints: SP must not exceed 15, because only 16 nested subroutines are allowed.
     fn increment_sp(&mut self) -> Result<(), CpuError> {
         self.sp += 1;
-        if self.sp >= STACK_SIZE as i16 {return Err(CpuError::StackOverflow)}
+        if self.sp >= STACK_SIZE as i16 {
+            return Err(CpuError::StackOverflow);
+        }
         Ok(())
     }
 
@@ -149,7 +153,7 @@ impl Cpu {
     }
 
     /// Opcode 0x2nnn - CALL
-    /// 
+    ///
     /// Call subroutine at nnn.
     ///
     /// The interpreter increments the stack pointer, then puts the current PC on the top of the stack.
@@ -191,13 +195,16 @@ mod tests {
     #[test]
     #[should_panic]
     fn exec_routine_out_of_memory() {
-        let mut c = Cpu { pc: 4094, ..Default::default()};
+        let mut c = Cpu {
+            pc: 4094,
+            ..Default::default()
+        };
         c.mem[4094] = 0x00;
         c.mem[4095] = 0xE0;
         c.exec_routine().unwrap();
     }
 
-    // Execute the jp instruction 
+    // Execute the jp instruction
     #[test]
     fn exec_routine_jp() {
         let mut c = Cpu::default();
@@ -207,14 +214,18 @@ mod tests {
         assert_eq!(c.pc, 0xBEE, "testing of jp instruction");
     }
 
-    // Execute the call instruction 
+    // Execute the call instruction
     #[test]
     fn exec_routine_call() {
         let mut c = Cpu::default();
         c.mem[0] = 0x2B;
         c.mem[1] = 0xEE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.stk.pop(), Some(0), "testing if PC has been saved on stack");
+        assert_eq!(
+            c.stk.pop(),
+            Some(0),
+            "testing if PC has been saved on stack"
+        );
         assert_eq!(c.pc, 0xBEE, "testing if new PC has been set");
     }
 }
