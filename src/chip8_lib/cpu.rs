@@ -4,6 +4,8 @@ use crate::display;
 
 const MEMORY_SIZE: usize = 4096;
 const REGISTER_COUNT: usize = 16;
+// Maximum 16 nested subroutines
+const STACK_SIZE: usize = 16;
 // Memory address from where the font is stored; by convention this is 0x50
 const FONT_START_ADDR: usize = 0x50;
 
@@ -33,6 +35,8 @@ pub enum CpuError {
     UnknownOpcode,
     #[error("attempted to pop from empty stack")]
     EmptyStack,
+    #[error("stack nesting limit exceeded")]
+    StackOverflow,
     #[error("attempted to increment program counter beyond memory constraints")]
     MemoryOutOfBounds,
 }
@@ -50,7 +54,7 @@ pub struct Cpu {
     i: u16,
     // General purpose registers
     reg: [u8; REGISTER_COUNT],
-    // Memory; 4kB
+    // Memory space; maximum 4KB
     mem: [u8; MEMORY_SIZE],
     // Stack; holds maximum of 16 addresses
     stk: Vec<u16>,
@@ -91,6 +95,7 @@ impl Cpu {
             0x00E0 => { result = self.cls() },
             0x00EE => { result = self.ret() },
             0x1000..0x1FFF => { result = self.jp(instruction) },
+            0x2000..0x2FFF => { result = self.call(instruction) },
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -98,9 +103,18 @@ impl Cpu {
     }
 
     // Advance program counter by 16 bits
+    // Constraints: PC must not be greater 4096, as this exceeds the memory limit of 4KB.
     fn increment_pc(&mut self) -> Result<(), CpuError> {
         self.pc += 2;
         if self.pc >= MEMORY_SIZE as u16 {return Err(CpuError::MemoryOutOfBounds)}
+        Ok(())
+    }
+
+    // Increment stack pointer by 1
+    // Constraints: SP must not exceed 15, because only 16 nested subroutines are allowed.
+    fn increment_sp(&mut self) -> Result<(), CpuError> {
+        self.sp += 1;
+        if self.sp >= STACK_SIZE as i16 {return Err(CpuError::StackOverflow)}
         Ok(())
     }
 
@@ -128,9 +142,23 @@ impl Cpu {
     /// Opcode 0x1nnn - JP
     ///
     /// The interpreter sets the program counter to nnn.
-    fn jp(&mut self, mut inst: u16) -> Result<(), CpuError> {
-        inst &= 0x0FFF;
-        self.pc = inst;
+    fn jp(&mut self, inst: u16) -> Result<(), CpuError> {
+        let addr = inst & 0x0FFF;
+        self.pc = addr;
+        Ok(())
+    }
+
+    /// Opcode 0x2nnn - CALL
+    /// 
+    /// Call subroutine at nnn.
+    ///
+    /// The interpreter increments the stack pointer, then puts the current PC on the top of the stack.
+    /// PC is then set to nnn.
+    fn call(&mut self, inst: u16) -> Result<(), CpuError> {
+        let addr = inst & 0x0FFF;
+        self.increment_sp().unwrap();
+        self.stk.push(self.pc);
+        self.pc = addr;
         Ok(())
     }
 }
@@ -146,7 +174,6 @@ mod tests {
         c.mem[0] = 0x00;
         c.mem[1] = 0xE0;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 2, "testing incrementation of program counter");
     }
 
     // Executing an unknown opcodeloaded to address 0x0000
@@ -164,8 +191,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn exec_routine_out_of_memory() {
-        let mut c = Cpu::default();
-        c.pc = 4094;
+        let mut c = Cpu { pc: 4094, ..Default::default()};
         c.mem[4094] = 0x00;
         c.mem[4095] = 0xE0;
         c.exec_routine().unwrap();
@@ -178,6 +204,17 @@ mod tests {
         c.mem[0] = 0x1B;
         c.mem[1] = 0xEE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 0xBEE, "testing executing of jp instruction");
+        assert_eq!(c.pc, 0xBEE, "testing of jp instruction");
+    }
+
+    // Executing the call instruction 
+    #[test]
+    fn exec_routine_call() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x2B;
+        c.mem[1] = 0xEE;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.stk.pop(), Some(0), "testing if PC has been saved on stack");
+        assert_eq!(c.pc, 0xBEE, "testing if new PC has been set");
     }
 }
