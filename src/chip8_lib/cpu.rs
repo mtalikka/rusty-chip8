@@ -167,7 +167,7 @@ impl Cpu {
 mod tests {
     use super::*;
 
-    // Executing a known opcode loaded to address 0x0000
+    // Execute a known opcode loaded to address 0x0000
     #[test]
     fn exec_routine_success() {
         let mut c = Cpu::default();
@@ -176,7 +176,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
     }
 
-    // Executing an unknown opcodeloaded to address 0x0000
+    // Execute an unknown opcodeloaded to address 0x0000
     #[test]
     #[should_panic]
     fn exec_routine_failure() {
@@ -186,7 +186,7 @@ mod tests {
         c.exec_routine().unwrap();
     }
 
-    // Executing a known opcode loaded to address 0xFFE,
+    // Execute a known opcode loaded to address 0xFFE,
     // causing program counter to increment beyond available memory
     #[test]
     #[should_panic]
@@ -197,7 +197,7 @@ mod tests {
         c.exec_routine().unwrap();
     }
 
-    // Executing the jp instruction 
+    // Execute the jp instruction 
     #[test]
     fn exec_routine_jp() {
         let mut c = Cpu::default();
@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(c.pc, 0xBEE, "testing of jp instruction");
     }
 
-    // Executing the call instruction 
+    // Execute the call instruction 
     #[test]
     fn exec_routine_call() {
         let mut c = Cpu::default();
