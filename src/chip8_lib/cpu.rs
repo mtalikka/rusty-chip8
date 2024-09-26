@@ -114,9 +114,9 @@ impl Cpu {
                     0x3 => result = self.xorxy(inst),
                     0x4 => result = self.addxy(inst),
                     0x5 => result = self.subxy(inst),
-                    0x6 => result = self.shrxy(inst),
+                    0x6 => result = self.shrx(inst),
                     0x7 => result = self.subnxy(inst),
-                    0xE => result = self.shlxy(inst),
+                    0xE => result = self.shlx(inst),
                     _ => return Err(CpuError::UnknownOpcode),
                 }
             }
@@ -340,7 +340,7 @@ impl Cpu {
     ///
     /// Set Vx = Vx SHR 1.
     /// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
-    fn shrxy(&mut self, inst: u16) -> Result<(), CpuError> {
+    fn shrx(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
         if self.reg[x] % 2 == 0 {self.reg[0xF] = 0}
         else {self.reg[0xF] = 1}
@@ -367,8 +367,12 @@ impl Cpu {
     ///
     /// Set Vx = Vx SHL 1.
     /// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
-    fn shlxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+    fn shlx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        if self.reg[x] >> 7 == 1 {self.reg[0xF] = 1}
+        else {self.reg[0xF] = 0}
+        self.reg[x] = self.reg[x].wrapping_mul(2);
+        Ok(())
     }
 }
 
@@ -575,9 +579,9 @@ mod tests {
         assert_eq!(c.reg[0x0B], 166);
     }
 
-    // Execute the shrxy instruction
+    // Execute the shrx instruction
     #[test]
-    fn exec_routine_shrxy() {
+    fn exec_routine_shrx() {
         let mut c = Cpu::default();
         c.mem[0] = 0x8B;
         c.mem[1] = 0x06;
@@ -598,5 +602,17 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 0);
         assert_eq!(c.reg[0x0B], 166);
+    }
+
+    // Execute the shlx instruction
+    #[test]
+    fn exec_routine_shlx() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0x0E;
+        c.reg[0xB] = 0x80;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.reg[0x0F], 1);
+        assert_eq!(c.reg[0x0B], 0);
     }
 }
