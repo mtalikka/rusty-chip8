@@ -353,7 +353,14 @@ impl Cpu {
     /// Set Vx = Vy - Vx, set VF = NOT borrow.
     /// If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
     fn subnxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        // Use wrapping_sub instead of regular operator to allow overflow
+        let res = self.reg[y].wrapping_sub(self.reg[x]);
+        if self.reg[y] > self.reg[x] {self.reg[0xF] = 1}
+        else {self.reg[0xF] = 0}
+        self.reg[x] = res;
+        Ok(())
     }
 
     /// Opcode 0x8xyE - SHL Vx, {, Vy}
@@ -578,5 +585,18 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 1);
         assert_eq!(c.reg[0x0B], 5);
+    }
+
+    // Execute the subnxy instruction
+    #[test]
+    fn exec_routine_subnxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0xC7;
+        c.reg[0xB] = 100;
+        c.reg[0xC] = 10;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.reg[0x0F], 0);
+        assert_eq!(c.reg[0x0B], 166);
     }
 }
