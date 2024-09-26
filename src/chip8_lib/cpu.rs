@@ -125,6 +125,7 @@ impl Cpu {
                 result = self.snexy(inst);
             }
             0xA000..0xAFFF => result = self.ldi(inst),
+            0xA000..0xBFFF => result = self.jp0(inst),
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
@@ -403,6 +404,15 @@ impl Cpu {
         self.i = addr;
         Ok(())
     }
+
+    /// Opcode 0xBnnn - JP V0, addr
+    ///
+    /// Set program counter to nnn + value in V0.
+    fn jp0(&mut self, inst: u16) -> Result<(), CpuError> {
+        let addr = inst & 0x0FFF;
+        self.pc = addr + self.reg[0x0] as u16;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -665,5 +675,16 @@ mod tests {
         c.mem[1] = 0xBB;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.i, 0xBBB);
+    }
+
+    // Execute the jp0 instruction
+    #[test]
+    fn exec_routine_jp0() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xBC;
+        c.mem[1] = 0xBC;
+        c.reg[0] = 1;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 0xCBD);
     }
 }
