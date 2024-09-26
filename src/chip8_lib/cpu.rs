@@ -267,7 +267,10 @@ impl Cpu {
     /// Set Vx = Vy.
     /// Stores the value of register Vy in register Vx.
     fn ldxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        self.reg[x] = self.reg[y];
+        Ok(())
     }
 
     /// Opcode 0x8xy1 - OR Vx, Vy
@@ -465,5 +468,16 @@ mod tests {
         c.reg[0xA] = 2;
         c.exec_routine().unwrap();
         assert_eq!(c.reg[0x0A], 0x17);
+    }
+
+    // Execute the ldxy instruction
+    #[test]
+    fn exec_routine_ldxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0xC0;
+        c.reg[0xC] = 2;
+        c.exec_routine().unwrap();
+        assert_eq!(c.reg[0x0B], 2);
     }
 }
