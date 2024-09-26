@@ -105,6 +105,7 @@ impl Cpu {
                 result = self.sexy(inst);
             }
             0x6000..0x6FFF => result = self.ldxb(inst),
+            0x7000..0x7FFF => result = self.addxb(inst),
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -171,7 +172,6 @@ impl Cpu {
     /// Opcode 0x2nnn - CALL addr
     ///
     /// Call subroutine at nnn.
-    ///
     /// The interpreter increments the stack pointer, then puts the current PC on the top of the stack.
     /// PC is then set to nnn.
     fn call(&mut self, inst: u16) -> Result<(), CpuError> {
@@ -235,6 +235,17 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let kk = inst as u8;
         self.ld(x, kk)
+    }
+
+    /// Opcode 0x7xkk - ADD Vx, byte
+    ///
+    /// Set Vx = Vx + kk.
+    /// Adds the value kk to the value of register Vx, then stores the result in Vx.
+    fn addxb(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let kk = inst as u8;
+        self.reg[x] += kk;
+        Ok(())
     }
 }
 
@@ -355,5 +366,16 @@ mod tests {
         c.mem[1] = 0x22;
         c.exec_routine().unwrap();
         assert_eq!(c.reg[0x0A], 0x22);
+    }
+
+    // Execute the addxb instruction
+    #[test]
+    fn exec_routine_addxb() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x7A;
+        c.mem[1] = 0x15;
+        c.reg[0xA] = 2;
+        c.exec_routine().unwrap();
+        assert_eq!(c.reg[0x0A], 0x17);
     }
 }
