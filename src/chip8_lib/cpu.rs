@@ -96,6 +96,7 @@ impl Cpu {
             0x00EE => result = self.ret(),
             0x1000..0x1FFF => result = self.jp(instruction),
             0x2000..0x2FFF => result = self.call(instruction),
+            0x3000..0x3FFF => result = self.se(instruction),
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -160,9 +161,24 @@ impl Cpu {
     /// PC is then set to nnn.
     fn call(&mut self, inst: u16) -> Result<(), CpuError> {
         let addr = inst & 0x0FFF;
-        self.increment_sp().unwrap();
+        self.increment_sp()?;
         self.stk.push(self.pc);
         self.pc = addr;
+        Ok(())
+    }
+
+    /// Opcode 0x3xkk - SE
+    ///
+    /// Skip next instruction if Vx = kk.
+    /// The interpreter compares register Vx to kk, and if they are equal, increments the program counter
+    /// by 2.
+    fn se(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = (inst & 0x0F00) >> 8;
+        let kk = inst & 0x00FF;
+        if self.reg[x as usize] == kk as u8 {
+            self.increment_pc()?;
+            self.increment_pc()?;
+        }
         Ok(())
     }
 }
@@ -227,5 +243,18 @@ mod tests {
             "testing if PC has been saved on stack"
         );
         assert_eq!(c.pc, 0xBEE, "testing if new PC has been set");
+    }
+
+    // Execute the se instruction
+    #[test]
+    fn exec_routine_se() {
+        let mut c = Cpu::default();
+        c.reg[0xA] = 0xBE;
+        c.mem[0] = 0x3A;
+        c.mem[1] = 0xBE;
+        c.mem[0xBE] = 0x3A;
+        c.mem[0xBF] = 0xBE;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 4, "testing of se instruction");
     }
 }
