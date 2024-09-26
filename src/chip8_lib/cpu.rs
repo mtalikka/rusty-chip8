@@ -97,6 +97,7 @@ impl Cpu {
             0x1000..0x1FFF => result = self.jp(instruction),
             0x2000..0x2FFF => result = self.call(instruction),
             0x3000..0x3FFF => result = self.se(instruction),
+            0x4000..0x4FFF => result = self.sne(instruction),
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -170,12 +171,27 @@ impl Cpu {
     /// Opcode 0x3xkk - SE
     ///
     /// Skip next instruction if Vx = kk.
-    /// The interpreter compares register Vx to kk, and if they are equal, increments the program counter
-    /// by 2.
+    /// The interpreter compares register Vx to kk, and if they are equal,
+    /// increments the program counter by 2.
     fn se(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = (inst & 0x0F00) >> 8;
         let kk = inst & 0x00FF;
         if self.reg[x as usize] == kk as u8 {
+            self.increment_pc()?;
+            self.increment_pc()?;
+        }
+        Ok(())
+    }
+
+    /// Opcode 0x4xkk - SNE
+    ///
+    /// Skip next instruction if Vx != kk.
+    /// The interpreter compares register Vx to kk, and if they are not equal,
+    /// increments the program counter by 2.
+    fn sne(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = (inst & 0x0F00) >> 8;
+        let kk = inst & 0x00FF;
+        if self.reg[x as usize] != kk as u8 {
             self.increment_pc()?;
             self.increment_pc()?;
         }
@@ -252,9 +268,18 @@ mod tests {
         c.reg[0xA] = 0xBE;
         c.mem[0] = 0x3A;
         c.mem[1] = 0xBE;
-        c.mem[0xBE] = 0x3A;
-        c.mem[0xBF] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.pc, 4, "testing of se instruction");
+    }
+
+    // Execute the sne instruction
+    #[test]
+    fn exec_routine_sne() {
+        let mut c = Cpu::default();
+        c.reg[0xA] = 0xBE;
+        c.mem[0] = 0x4A;
+        c.mem[1] = 0xBE;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 0, "testing of sne instruction");
     }
 }
