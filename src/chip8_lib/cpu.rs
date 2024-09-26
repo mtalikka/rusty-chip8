@@ -106,6 +106,20 @@ impl Cpu {
             }
             0x6000..0x6FFF => result = self.ldxb(inst),
             0x7000..0x7FFF => result = self.addxb(inst),
+            0x8000..0x8FFF => {
+                match inst & 0x000F {
+                    0x0 => result = self.ldxy(inst),
+                    0x1 => result = self.orxy(inst),
+                    0x2 => result = self.andxy(inst),
+                    0x3 => result = self.xorxy(inst),
+                    0x4 => result = self.addxy(inst),
+                    0x5 => result = self.subxy(inst),
+                    0x6 => result = self.shrxy(inst),
+                    0x7 => result = self.subnxy(inst),
+                    0xE => result = self.shlxy(inst),
+                    _ => return Err(CpuError::UnknownOpcode),
+                }
+            }
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -246,6 +260,80 @@ impl Cpu {
         let kk = inst as u8;
         self.reg[x] += kk;
         Ok(())
+    }
+
+    /// Opcode 0x8xy0 - LD Vx, Vy
+    ///
+    /// Set Vx = Vy.
+    /// Stores the value of register Vy in register Vx.
+    fn ldxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xy1 - OR Vx, Vy
+    ///
+    /// Set Vx = Vx OR Vy.
+    /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
+    fn orxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xk2 - AND Vx, Vy
+    ///
+    /// Set Vx = Vx AND Vy.
+    /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
+    fn andxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xy3 - XOR Vx, Vy
+    ///
+    /// Set Vx = Vx XOR Vy.
+    /// Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx.
+    fn xorxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xy4 - ADD Vx, Vy
+    ///
+    /// Set Vx = Vx + Vy, set VF = carry.
+    /// The values of Vx and Vy are added together.
+    /// If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
+    /// Only the lowest 8 bits of the result are kept, and stored in Vx.
+    fn addxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xy5 - SUB Vx, Vy
+    ///
+    /// Set Vx = Vx - Vy, set VF = NOT borrow.
+    /// If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+    fn subxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xy6 - SHR Vx, {, Vy}
+    ///
+    /// Set Vx = Vx SHR 1.
+    /// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
+    fn shrxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xy7 - SUBN Vx, Vy
+    ///
+    /// Set Vx = Vy - Vx, set VF = NOT borrow.
+    /// If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
+    fn subnxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+    }
+
+    /// Opcode 0x8xyE - SHL Vx, {, Vy}
+    ///
+    /// Set Vx = Vx SHL 1.
+    /// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
+    fn shlxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
     }
 }
 
