@@ -120,6 +120,10 @@ impl Cpu {
                     _ => return Err(CpuError::UnknownOpcode),
                 }
             }
+            0x9000..0x9FFF => {
+                if inst & 0x000F != 0 {return Err(CpuError::UnknownOpcode)};
+                result = self.snexy(inst);
+            }
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
@@ -231,9 +235,9 @@ impl Cpu {
     /// The interpreter compares register Vx to register Vy, and if they are equal,
     /// increments the program counter by 2.
     fn sexy(&mut self, inst: u16) -> Result<(), CpuError> {
-        let x = (inst & 0x0F00) >> 8;
-        let y = (inst & 0x00F0) >> 4;
-        if self.reg[x as usize] == self.reg[y as usize] {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        if self.reg[x] == self.reg[y] {
             self.increment_pc()?;
             self.increment_pc()?;
         }
@@ -374,6 +378,21 @@ impl Cpu {
         self.reg[x] = self.reg[x].wrapping_mul(2);
         Ok(())
     }
+
+    /// Opcode 0x9xy0 - SNE Vx, Vy
+    ///
+    /// Skip next instruction if Vx != Vy.
+    /// The interpreter compares register Vx to register Vy, and if they are not equal,
+    /// increments the program counter by 2.
+    fn snexy(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        if self.reg[x] != self.reg[y] {
+            self.increment_pc()?;
+            self.increment_pc()?;
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -465,10 +484,10 @@ mod tests {
     #[test]
     fn exec_routine_sexy_success() {
         let mut c = Cpu::default();
-        c.reg[0xA] = 0xBE;
-        c.reg[0xC] = 0xBE;
         c.mem[0] = 0x5A;
         c.mem[1] = 0xC0;
+        c.reg[0xA] = 0xBE;
+        c.reg[0xC] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.pc, 4, "testing of sexy instruction");
     }
@@ -478,10 +497,10 @@ mod tests {
     #[should_panic]
     fn exec_routine_sexy_failure() {
         let mut c = Cpu::default();
-        c.reg[0xA] = 0xBE;
-        c.reg[0xC] = 0xBE;
         c.mem[0] = 0x5A;
         c.mem[1] = 0xC1;
+        c.reg[0xA] = 0xBE;
+        c.reg[0xC] = 0xBE;
         c.exec_routine().unwrap();
     }
 
@@ -614,5 +633,17 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 1);
         assert_eq!(c.reg[0x0B], 0);
+    }
+
+    // Execute the snexy instruction
+    #[test]
+    fn exec_routine_snexy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x9A;
+        c.mem[1] = 0xC0;
+        c.reg[0xA] = 0x20;
+        c.reg[0xC] = 0xBE;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 4, "testing of snexy instruction");
     }
 }
