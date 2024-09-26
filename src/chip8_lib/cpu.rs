@@ -102,27 +102,29 @@ impl Cpu {
             0x3000..0x3FFF => result = self.sexb(inst),
             0x4000..0x4FFF => result = self.snexb(inst),
             0x5000..0x5FFF => {
-                if inst & 0x000F != 0 {return Err(CpuError::UnknownOpcode)};
+                if inst & 0x000F != 0 {
+                    return Err(CpuError::UnknownOpcode);
+                };
                 result = self.sexy(inst);
             }
             0x6000..0x6FFF => result = self.ldxb(inst),
             0x7000..0x7FFF => result = self.addxb(inst),
-            0x8000..0x8FFF => {
-                match inst & 0x000F {
-                    0x0 => result = self.ldxy(inst),
-                    0x1 => result = self.orxy(inst),
-                    0x2 => result = self.andxy(inst),
-                    0x3 => result = self.xorxy(inst),
-                    0x4 => result = self.addxy(inst),
-                    0x5 => result = self.subxy(inst),
-                    0x6 => result = self.shrx(inst),
-                    0x7 => result = self.subnxy(inst),
-                    0xE => result = self.shlx(inst),
-                    _ => return Err(CpuError::UnknownOpcode),
-                }
-            }
+            0x8000..0x8FFF => match inst & 0x000F {
+                0x0 => result = self.ldxy(inst),
+                0x1 => result = self.orxy(inst),
+                0x2 => result = self.andxy(inst),
+                0x3 => result = self.xorxy(inst),
+                0x4 => result = self.addxy(inst),
+                0x5 => result = self.subxy(inst),
+                0x6 => result = self.shrx(inst),
+                0x7 => result = self.subnxy(inst),
+                0xE => result = self.shlx(inst),
+                _ => return Err(CpuError::UnknownOpcode),
+            },
             0x9000..0x9FFF => {
-                if inst & 0x000F != 0 {return Err(CpuError::UnknownOpcode)};
+                if inst & 0x000F != 0 {
+                    return Err(CpuError::UnknownOpcode);
+                };
                 result = self.snexy(inst);
             }
             0xA000..0xAFFF => result = self.ldi(inst),
@@ -317,8 +319,11 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let y = ((inst & 0x00F0) >> 4) as usize;
         let res = self.reg[x] as u16 + self.reg[y] as u16;
-        if res > 255 {self.reg[0xF] = 1}
-        else {self.reg[0xF] = 0}
+        if res > 255 {
+            self.reg[0xF] = 1
+        } else {
+            self.reg[0xF] = 0
+        }
         self.reg[x] = res as u8;
         Ok(())
     }
@@ -332,8 +337,11 @@ impl Cpu {
         let y = ((inst & 0x00F0) >> 4) as usize;
         // Use wrapping_sub instead of regular operator to allow overflow
         let res = self.reg[x].wrapping_sub(self.reg[y]);
-        if self.reg[x] > self.reg[y] {self.reg[0xF] = 1}
-        else {self.reg[0xF] = 0}
+        if self.reg[x] > self.reg[y] {
+            self.reg[0xF] = 1
+        } else {
+            self.reg[0xF] = 0
+        }
         self.reg[x] = res;
         Ok(())
     }
@@ -344,8 +352,11 @@ impl Cpu {
     /// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
     fn shrx(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
-        if self.reg[x] % 2 == 0 {self.reg[0xF] = 0}
-        else {self.reg[0xF] = 1}
+        if self.reg[x] % 2 == 0 {
+            self.reg[0xF] = 0
+        } else {
+            self.reg[0xF] = 1
+        }
         self.reg[x] /= 2;
         Ok(())
     }
@@ -359,8 +370,11 @@ impl Cpu {
         let y = ((inst & 0x00F0) >> 4) as usize;
         // Use wrapping_sub instead of regular operator to allow overflow
         let res = self.reg[y].wrapping_sub(self.reg[x]);
-        if self.reg[y] > self.reg[x] {self.reg[0xF] = 1}
-        else {self.reg[0xF] = 0}
+        if self.reg[y] > self.reg[x] {
+            self.reg[0xF] = 1
+        } else {
+            self.reg[0xF] = 0
+        }
         self.reg[x] = res;
         Ok(())
     }
@@ -371,8 +385,11 @@ impl Cpu {
     /// If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. Then Vx is multiplied by 2.
     fn shlx(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
-        if self.reg[x] >> 7 == 1 {self.reg[0xF] = 1}
-        else {self.reg[0xF] = 0}
+        if self.reg[x] >> 7 == 1 {
+            self.reg[0xF] = 1
+        } else {
+            self.reg[0xF] = 0
+        }
         self.reg[x] = self.reg[x].wrapping_mul(2);
         Ok(())
     }
