@@ -313,7 +313,13 @@ impl Cpu {
     /// If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0.
     /// Only the lowest 8 bits of the result are kept, and stored in Vx.
     fn addxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        let res = self.reg[x] as u16 + self.reg[y] as u16;
+        if res > 255 {self.reg[0xF] = 1}
+        else {self.reg[0xF] = 0}
+        self.reg[x] = res as u8;
+        Ok(())
     }
 
     /// Opcode 0x8xy5 - SUB Vx, Vy
@@ -464,7 +470,7 @@ mod tests {
         let mut c = Cpu::default();
         c.mem[0] = 0x6A;
         c.mem[1] = 0x22;
-        c.exec_routine().unwrap();
+        c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0A], 0x22);
     }
 
@@ -475,7 +481,7 @@ mod tests {
         c.mem[0] = 0x7A;
         c.mem[1] = 0x15;
         c.reg[0xA] = 2;
-        c.exec_routine().unwrap();
+        c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0A], 0x17);
     }
 
@@ -486,7 +492,7 @@ mod tests {
         c.mem[0] = 0x8B;
         c.mem[1] = 0xC0;
         c.reg[0xC] = 2;
-        c.exec_routine().unwrap();
+        c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 2);
     }
 
@@ -498,7 +504,7 @@ mod tests {
         c.mem[1] = 0xC1;
         c.reg[0xB] = 4;
         c.reg[0xC] = 2;
-        c.exec_routine().unwrap();
+        c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 6);
     }
 
@@ -510,7 +516,7 @@ mod tests {
         c.mem[1] = 0xC2;
         c.reg[0xB] = 4;
         c.reg[0xC] = 2;
-        c.exec_routine().unwrap();
+        c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 0);
     }
 
@@ -522,7 +528,20 @@ mod tests {
         c.mem[1] = 0xC3;
         c.reg[0xB] = 4;
         c.reg[0xC] = 3;
-        c.exec_routine().unwrap();
+        c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 7);
+    }
+
+    // Execute the addxy instruction
+    #[test]
+    fn exec_routine_addxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0xC4;
+        c.reg[0xB] = 255;
+        c.reg[0xC] = 20;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.reg[0x0F], 1);
+        assert_eq!(c.reg[0x0B], 19);
     }
 }
