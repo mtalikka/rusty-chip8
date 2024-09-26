@@ -39,6 +39,8 @@ pub enum CpuError {
     StackOverflow,
     #[error("attempted to increment program counter beyond memory constraints")]
     MemoryOutOfBounds,
+    #[error("attempted to access a register which does not exist")]
+    InvalidRegister,
 }
 
 pub struct Cpu {
@@ -102,6 +104,7 @@ impl Cpu {
                 if inst & 0x000F != 0 {return Err(CpuError::UnknownOpcode)};
                 result = self.sexy(inst);
             }
+            0x6000..0x6FFF => result = self.ldxb(inst),
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -125,6 +128,13 @@ impl Cpu {
         if self.sp >= STACK_SIZE as i16 {
             return Err(CpuError::StackOverflow);
         }
+        Ok(())
+    }
+
+    // Put value v into register r
+    fn ld(&mut self, r: usize, v: u8) -> Result<(), CpuError> {
+        if r >= REGISTER_COUNT {return Err(CpuError::InvalidRegister)};
+        self.reg[r] = v;
         Ok(())
     }
 
@@ -178,9 +188,9 @@ impl Cpu {
     /// The interpreter compares register Vx to kk, and if they are equal,
     /// increments the program counter by 2.
     fn sexb(&mut self, inst: u16) -> Result<(), CpuError> {
-        let x = (inst & 0x0F00) >> 8;
-        let kk = inst & 0x00FF;
-        if self.reg[x as usize] == kk as u8 {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let kk = inst as u8;
+        if self.reg[x] == kk {
             self.increment_pc()?;
             self.increment_pc()?;
         }
@@ -215,6 +225,16 @@ impl Cpu {
             self.increment_pc()?;
         }
         Ok(())
+    }
+
+    /// Opcode 0x6xkk - LD Vx, byte
+    ///
+    /// Set Vx = kk.
+    /// The interpreter puts the value kk into register Vx.
+    fn ldxb(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let kk = inst as u8;
+        self.ld(x, kk)
     }
 }
 
@@ -325,5 +345,15 @@ mod tests {
         c.mem[0] = 0x5A;
         c.mem[1] = 0xC1;
         c.exec_routine().unwrap();
+    }
+
+    // Execute the ldxb instruction
+    #[test]
+    fn exec_routine_ldxb() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x6A;
+        c.mem[1] = 0x22;
+        c.exec_routine().unwrap();
+        assert_eq!(c.reg[0x0A], 0x22);
     }
 }
