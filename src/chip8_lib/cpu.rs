@@ -1,3 +1,4 @@
+use rand::Rng;
 use thiserror::Error;
 
 use crate::display;
@@ -125,7 +126,8 @@ impl Cpu {
                 result = self.snexy(inst);
             }
             0xA000..0xAFFF => result = self.ldi(inst),
-            0xA000..0xBFFF => result = self.jp0(inst),
+            0xB000..0xBFFF => result = self.jp0(inst),
+            0xC000..0xCFFF => result = self.rndx(inst),
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
@@ -148,13 +150,6 @@ impl Cpu {
         if self.sp >= STACK_SIZE as i16 {
             return Err(CpuError::StackOverflow);
         }
-        Ok(())
-    }
-
-    // Put value v into register r
-    fn ld(&mut self, r: usize, v: u8) -> Result<(), CpuError> {
-        if r >= REGISTER_COUNT {return Err(CpuError::InvalidRegister)};
-        self.reg[r] = v;
         Ok(())
     }
 
@@ -253,7 +248,8 @@ impl Cpu {
     fn ldxb(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let kk = inst as u8;
-        self.ld(x, kk)
+        self.reg[x] = kk;
+        Ok(())
     }
 
     /// Opcode 0x7xkk - ADD Vx, byte
@@ -411,6 +407,19 @@ impl Cpu {
     fn jp0(&mut self, inst: u16) -> Result<(), CpuError> {
         let addr = inst & 0x0FFF;
         self.pc = addr + self.reg[0x0] as u16;
+        Ok(())
+    }
+
+    /// Opcode 0xCxkk - RND Vx, byte
+    ///
+    /// Set Vx = random byte AND kk.
+    /// The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk.
+    /// The results are stored in Vx.
+    fn rndx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let kk = inst as u8;
+        let val: u8 = rand::random();
+        self.reg[x] = val & kk;
         Ok(())
     }
 }

@@ -14,3 +14,4 @@ path = "src/chip8_frontend/bin.rs"
 [dependencies]
 ggez = "0.9.3"
 thiserror = "1.0.64"
+rand = "0.8.5"

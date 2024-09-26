@@ -2062,6 +2062,7 @@ name = "rusty_chip8"
 version = "0.1.0"
 dependencies = [
  "ggez",
+ "rand",
  "thiserror",
 ]
 
