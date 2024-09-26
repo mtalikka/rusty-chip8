@@ -88,16 +88,20 @@ impl Cpu {
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {
         let result: Result<(), CpuError>;
         // Pack two contiguous 8-bit segments in memory into 16-bit instruction
-        let mut instruction: u16 = self.mem[self.pc as usize] as u16;
-        instruction <<= 8;
-        instruction |= self.mem[self.pc as usize + 1] as u16;
-        match instruction {
+        let mut inst: u16 = self.mem[self.pc as usize] as u16;
+        inst <<= 8;
+        inst |= self.mem[self.pc as usize + 1] as u16;
+        match inst {
             0x00E0 => result = self.cls(),
             0x00EE => result = self.ret(),
-            0x1000..0x1FFF => result = self.jp(instruction),
-            0x2000..0x2FFF => result = self.call(instruction),
-            0x3000..0x3FFF => result = self.se(instruction),
-            0x4000..0x4FFF => result = self.sne(instruction),
+            0x1000..0x1FFF => result = self.jp(inst),
+            0x2000..0x2FFF => result = self.call(inst),
+            0x3000..0x3FFF => result = self.sexb(inst),
+            0x4000..0x4FFF => result = self.snexb(inst),
+            0x5000..0x5FFF => {
+                if inst & 0x000F != 0 {return Err(CpuError::UnknownOpcode)};
+                result = self.sexy(inst);
+            }
             ..u16::MAX => return Err(CpuError::UnknownOpcode),
             u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -145,7 +149,7 @@ impl Cpu {
         Ok(())
     }
 
-    /// Opcode 0x1nnn - JP
+    /// Opcode 0x1nnn - JP addr
     ///
     /// The interpreter sets the program counter to nnn.
     fn jp(&mut self, inst: u16) -> Result<(), CpuError> {
@@ -154,7 +158,7 @@ impl Cpu {
         Ok(())
     }
 
-    /// Opcode 0x2nnn - CALL
+    /// Opcode 0x2nnn - CALL addr
     ///
     /// Call subroutine at nnn.
     ///
@@ -168,12 +172,12 @@ impl Cpu {
         Ok(())
     }
 
-    /// Opcode 0x3xkk - SE
+    /// Opcode 0x3xkk - SE Vx, byte
     ///
     /// Skip next instruction if Vx = kk.
     /// The interpreter compares register Vx to kk, and if they are equal,
     /// increments the program counter by 2.
-    fn se(&mut self, inst: u16) -> Result<(), CpuError> {
+    fn sexb(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = (inst & 0x0F00) >> 8;
         let kk = inst & 0x00FF;
         if self.reg[x as usize] == kk as u8 {
@@ -183,15 +187,30 @@ impl Cpu {
         Ok(())
     }
 
-    /// Opcode 0x4xkk - SNE
+    /// Opcode 0x4xkk - SNE Vx, byte
     ///
     /// Skip next instruction if Vx != kk.
     /// The interpreter compares register Vx to kk, and if they are not equal,
     /// increments the program counter by 2.
-    fn sne(&mut self, inst: u16) -> Result<(), CpuError> {
+    fn snexb(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = (inst & 0x0F00) >> 8;
         let kk = inst & 0x00FF;
         if self.reg[x as usize] != kk as u8 {
+            self.increment_pc()?;
+            self.increment_pc()?;
+        }
+        Ok(())
+    }
+
+    /// Opcode 0x5xy0 - SE Vx, Vy
+    ///
+    /// Skip next instruction if Vx = Vy.
+    /// The interpreter compares register Vx to register Vy, and if they are equal,
+    /// increments the program counter by 2.
+    fn sexy(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = (inst & 0x0F00) >> 8;
+        let y = (inst & 0x00F0) >> 4;
+        if self.reg[x as usize] == self.reg[y as usize] {
             self.increment_pc()?;
             self.increment_pc()?;
         }
@@ -261,9 +280,9 @@ mod tests {
         assert_eq!(c.pc, 0xBEE, "testing if new PC has been set");
     }
 
-    // Execute the se instruction
+    // Execute the sexb instruction
     #[test]
-    fn exec_routine_se() {
+    fn exec_routine_sexb() {
         let mut c = Cpu::default();
         c.reg[0xA] = 0xBE;
         c.mem[0] = 0x3A;
@@ -272,14 +291,39 @@ mod tests {
         assert_eq!(c.pc, 4, "testing of se instruction");
     }
 
-    // Execute the sne instruction
+    // Execute the snexb instruction
     #[test]
-    fn exec_routine_sne() {
+    fn exec_routine_snexb() {
         let mut c = Cpu::default();
         c.reg[0xA] = 0xBE;
         c.mem[0] = 0x4A;
         c.mem[1] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.pc, 0, "testing of sne instruction");
+    }
+
+    // Execute the sexy instruction
+    // Ha, ha.
+    #[test]
+    fn exec_routine_sexy_success() {
+        let mut c = Cpu::default();
+        c.reg[0xA] = 0xBE;
+        c.reg[0xC] = 0xBE;
+        c.mem[0] = 0x5A;
+        c.mem[1] = 0xC0;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 4, "testing of sexy instruction");
+    }
+
+    // Execute the sexy instruction and fail
+    #[test]
+    #[should_panic]
+    fn exec_routine_sexy_failure() {
+        let mut c = Cpu::default();
+        c.reg[0xA] = 0xBE;
+        c.reg[0xC] = 0xBE;
+        c.mem[0] = 0x5A;
+        c.mem[1] = 0xC1;
+        c.exec_routine().unwrap();
     }
 }
