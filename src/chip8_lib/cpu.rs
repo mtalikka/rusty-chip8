@@ -278,7 +278,10 @@ impl Cpu {
     /// Set Vx = Vx OR Vy.
     /// Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
     fn orxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        self.reg[x] |= self.reg[y];
+        Ok(())
     }
 
     /// Opcode 0x8xk2 - AND Vx, Vy
@@ -286,7 +289,10 @@ impl Cpu {
     /// Set Vx = Vx AND Vy.
     /// Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
     fn andxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        self.reg[x] &= self.reg[y];
+        Ok(())
     }
 
     /// Opcode 0x8xy3 - XOR Vx, Vy
@@ -294,7 +300,10 @@ impl Cpu {
     /// Set Vx = Vx XOR Vy.
     /// Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx.
     fn xorxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        self.reg[x] ^= self.reg[y];
+        Ok(())
     }
 
     /// Opcode 0x8xy4 - ADD Vx, Vy
@@ -479,5 +488,41 @@ mod tests {
         c.reg[0xC] = 2;
         c.exec_routine().unwrap();
         assert_eq!(c.reg[0x0B], 2);
+    }
+
+    // Execute the orxy instruction
+    #[test]
+    fn exec_routine_orxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0xC1;
+        c.reg[0xB] = 4;
+        c.reg[0xC] = 2;
+        c.exec_routine().unwrap();
+        assert_eq!(c.reg[0x0B], 6);
+    }
+
+    // Execute the andxy instruction
+    #[test]
+    fn exec_routine_andxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0xC2;
+        c.reg[0xB] = 4;
+        c.reg[0xC] = 2;
+        c.exec_routine().unwrap();
+        assert_eq!(c.reg[0x0B], 0);
+    }
+
+    // Execute the xorxy instruction
+    #[test]
+    fn exec_routine_xorxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0xC3;
+        c.reg[0xB] = 4;
+        c.reg[0xC] = 3;
+        c.exec_routine().unwrap();
+        assert_eq!(c.reg[0x0B], 7);
     }
 }
