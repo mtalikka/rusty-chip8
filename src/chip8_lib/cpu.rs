@@ -124,6 +124,7 @@ impl Cpu {
                 if inst & 0x000F != 0 {return Err(CpuError::UnknownOpcode)};
                 result = self.snexy(inst);
             }
+            0xA000..0xAFFF => result = self.ldi(inst),
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
@@ -393,6 +394,15 @@ impl Cpu {
         }
         Ok(())
     }
+
+    /// Opcode 0xAnnn - LD I, addr
+    ///
+    /// Set value of register I to nnn.
+    fn ldi(&mut self, inst: u16) -> Result<(), CpuError> {
+        let addr = inst & 0x0FFF;
+        self.i = addr;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -644,6 +654,16 @@ mod tests {
         c.reg[0xA] = 0x20;
         c.reg[0xC] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 4, "testing of snexy instruction");
+        assert_eq!(c.pc, 4);
+    }
+
+    // Execute the ldi instruction
+    #[test]
+    fn exec_routine_ldi() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xAB;
+        c.mem[1] = 0xBB;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.i, 0xBBB);
     }
 }
