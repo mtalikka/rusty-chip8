@@ -120,8 +120,7 @@ impl Cpu {
                     _ => return Err(CpuError::UnknownOpcode),
                 }
             }
-            ..u16::MAX => return Err(CpuError::UnknownOpcode),
-            u16::MAX => return Err(CpuError::UnknownOpcode),
+            ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
     }
@@ -342,7 +341,11 @@ impl Cpu {
     /// Set Vx = Vx SHR 1.
     /// If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.
     fn shrxy(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        if self.reg[x] % 2 == 0 {self.reg[0xF] = 0}
+        else {self.reg[0xF] = 1}
+        self.reg[x] /= 2;
+        Ok(())
     }
 
     /// Opcode 0x8xy7 - SUBN Vx, Vy
@@ -563,5 +566,17 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 0);
         assert_eq!(c.reg[0x0B], 166);
+    }
+
+    // Execute the shrxy instruction
+    #[test]
+    fn exec_routine_shrxy() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0x8B;
+        c.mem[1] = 0x06;
+        c.reg[0xB] = 11;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.reg[0x0F], 1);
+        assert_eq!(c.reg[0x0B], 5);
     }
 }
