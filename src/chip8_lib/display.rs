@@ -37,13 +37,20 @@ impl DisplayController {
     // 'side' parameter refers to direction which is subject to XOR.
     // Returns resulting byte as u8
     fn xor_side_from_offset(&self, byte1: u8, byte2: u8, offset: u8, side: Direction) -> u8 {
+        let save_mask: u8;
+        let mut ret: u8;
         // Create a mask to retain bits right or left of offset
-        let save_mask: u8 = match side {
-            Direction::Left => 0xFF >> offset,
-            Direction::Right => 0xFF << (8 - offset),
-        };
+        match side {
+            Direction::Left => {
+                save_mask = 0xFF >> offset;
+                ret = byte1 ^ (byte2 << (8 - offset));
+            },
+            Direction::Right => {
+                save_mask = 0xFF << (8 - offset);
+                ret = byte1 ^ (byte2 >> offset);
+            },
+        }
         let save_bits: u8 = byte1 & save_mask;
-        let mut ret = byte1 ^ byte2;
         // Restore saved bits
         ret &= !save_mask;
         ret += save_bits;
@@ -132,17 +139,31 @@ impl DisplayController {
         fn draw_even() {
             let mut dct = DisplayController::default();
             let chunk_idx: usize = dct.get_idx(0, 0);
-            let orig_chunk: u8 = dct.frame_buffer[chunk_idx];
             // '0'
             let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
             let vf = dct.draw(0, 0, sprite);
             // Since frame buffer starts zeroed, there can be no collisions
             assert_eq!(vf, 0);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 0)], 0xF0);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 1)], 0x90);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x90);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x90);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0xF0);
         }
 
         // Draw a sprite to frame buffer that overflows into a second byte
         #[test]
         fn draw_offset() {
-
+            let mut dct = DisplayController::default();
+            // '0'
+            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+            let vf = dct.draw(1, 0, sprite);
+            // Since frame buffer starts zeroed, there can be no collisions
+            assert_eq!(vf, 0);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 0)], 0x78);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 1)], 0x48);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x48);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x48);
+            assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0x78);
         }
     }
