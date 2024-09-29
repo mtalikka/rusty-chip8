@@ -126,55 +126,55 @@ impl DisplayController {
     }
 }
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use crate::cpu::FONT;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cpu::FONT;
 
-        // Draw a sprite to frame buffer that evenly fits into a single byte
-        #[test]
-        fn draw_even() {
-            let mut dct = DisplayController::default();
-            let chunk_idx: usize = dct.get_idx(0, 0);
-            // '0'
-            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
-            let vf = dct.draw(0, 0, sprite);
-            // Since frame buffer starts zeroed, there can be no collisions
-            assert_eq!(vf, 0);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 0)], 0xF0);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 1)], 0x90);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x90);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x90);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0xF0);
-        }
-
-        // Draw a sprite to frame buffer that overflows into a second byte
-        #[test]
-        fn draw_offset() {
-            let mut dct = DisplayController::default();
-            // '0'
-            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
-            let vf = dct.draw(1, 0, sprite);
-            // Since frame buffer starts zeroed, there can be no collisions
-            assert_eq!(vf, 0);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 0)], 0x78);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 1)], 0x48);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x48);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x48);
-            assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0x78);
-        }
-
-        // Draw a sprite to frame buffer that collides with a set pixel
-        #[test]
-        fn draw_collision() {
-            let mut dct = DisplayController::default();
-            // '0'
-            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
-            _ = dct.draw(1, 0, sprite);
-            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
-            let vf = dct.draw(1, 0, sprite);
-            // Since two sprites with identical properties were blitted to the same coordinates,
-            // there was a collision and Vf must be 1.
-            assert_eq!(vf, 1);
-        }
+    // Draw a sprite to frame buffer that evenly fits into a single byte
+    #[test]
+    fn draw_even() {
+        let mut dct = DisplayController::default();
+        let chunk_idx: usize = dct.get_idx(0, 0);
+        // '0'
+        let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+        let vf = dct.draw(0, 0, sprite);
+        // Since frame buffer starts zeroed, there can be no collisions
+        assert_eq!(vf, 0);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 0)], 0xF0);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 1)], 0x90);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x90);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x90);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0xF0);
     }
+
+    // Draw a sprite to frame buffer that overflows into a second byte
+    #[test]
+    fn draw_offset() {
+        let mut dct = DisplayController::default();
+        // '0'
+        let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+        let vf = dct.draw(1, 0, sprite);
+        // Since frame buffer starts zeroed, there can be no collisions
+        assert_eq!(vf, 0);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 0)], 0x78);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 1)], 0x48);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x48);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x48);
+        assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0x78);
+    }
+
+    // Draw a sprite to frame buffer that collides with a set pixel
+    #[test]
+    fn draw_collision() {
+        let mut dct = DisplayController::default();
+        // '0'
+        let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+        _ = dct.draw(1, 0, sprite);
+        let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+        let vf = dct.draw(1, 0, sprite);
+        // Since two sprites with identical properties were blitted to the same coordinates,
+        // there was a collision and Vf must be 1.
+        assert_eq!(vf, 1);
+    }
+}

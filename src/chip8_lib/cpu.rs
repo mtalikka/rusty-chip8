@@ -483,7 +483,7 @@ impl Cpu {
     fn skpx(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let key = self.reg[x];
-        if self.ict.is_pressed(key) {
+        if self.ict.key_pressed(key) {
             self.increment_pc()?;
             self.increment_pc()?;
         }
@@ -498,7 +498,7 @@ impl Cpu {
     fn sknpx(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let key = self.reg[x];
-        if !self.ict.is_pressed(key) {
+        if !self.ict.key_pressed(key) {
             self.increment_pc()?;
             self.increment_pc()?;
         }

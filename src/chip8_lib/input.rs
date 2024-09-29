@@ -1,35 +1,55 @@
-use std::collections::HashMap;
-
-enum KeyState {
-    Pressed,
-    NotPressed
-}
-
+#[derive(Default)]
 pub struct InputController {
-    keys: HashMap::<char, KeyState>,
+    // Bit flag representing the state of keys '0' (0x01) - 'F' (0x80)
+    // Set bit means pressed, unset not pressed
+    keys: u16,
 }
 
-impl Default for InputController {
-    fn default() -> Self {
-        Self {
-            keys: HashMap::<char, KeyState>::from([
-                ('1', KeyState::NotPressed),
-                ('2', KeyState::NotPressed),
-                ('3', KeyState::NotPressed),
-                ('4', KeyState::NotPressed),
-                ('5', KeyState::NotPressed),
-                ('6', KeyState::NotPressed),
-                ('7', KeyState::NotPressed),
-                ('8', KeyState::NotPressed),
-                ('9', KeyState::NotPressed),
-                ('0', KeyState::NotPressed),
-                ('A', KeyState::NotPressed),
-                ('B', KeyState::NotPressed),
-                ('C', KeyState::NotPressed),
-                ('D', KeyState::NotPressed),
-                ('E', KeyState::NotPressed),
-                ('F', KeyState::NotPressed),
-            ])
-        }
+impl InputController {
+    // Checks whether numerical key from 0-F is pressed
+    // Assumes key is max 4 bits long
+    pub fn key_pressed(&self, key: u8) -> bool {
+        (self.keys & (1 << key)) > 0
+    }
+    pub fn press_key(&mut self, key: u8) {
+        self.keys |= 1 << key;
+    }
+    pub fn unpress_key(&mut self, key: u8) {
+        self.keys ^= 1 << key;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn key_pressed() {
+        let ict = InputController { keys: 0xAAAA };
+        assert!(!ict.key_pressed(0x0));
+        assert!(ict.key_pressed(0x1));
+        assert!(!ict.key_pressed(0x2));
+        assert!(ict.key_pressed(0x3));
+        assert!(!ict.key_pressed(0x4));
+        assert!(ict.key_pressed(0x5));
+        assert!(!ict.key_pressed(0x6));
+        assert!(ict.key_pressed(0x7));
+        assert!(!ict.key_pressed(0x8));
+        assert!(ict.key_pressed(0x9));
+        assert!(!ict.key_pressed(0xA));
+        assert!(ict.key_pressed(0xB));
+        assert!(!ict.key_pressed(0xC));
+        assert!(ict.key_pressed(0xD));
+        assert!(!ict.key_pressed(0xE));
+        assert!(ict.key_pressed(0xF));
+    }
+
+    #[test]
+    fn press_unpress_key() {
+        let mut ict = InputController::default();
+        ict.press_key(0xA);
+        assert!(ict.key_pressed(0xA));
+        ict.unpress_key(0xA);
+        assert!(!ict.key_pressed(0xA));
     }
 }
