@@ -50,8 +50,8 @@ impl DisplayController {
                 ret = byte1 ^ (byte2 >> offset);
             },
         }
-        let save_bits: u8 = byte1 & save_mask;
         // Restore saved bits
+        let save_bits: u8 = byte1 & save_mask;
         ret &= !save_mask;
         ret += save_bits;
         ret
@@ -165,5 +165,19 @@ impl DisplayController {
             assert_eq!(dct.frame_buffer[dct.get_idx(0, 2)], 0x48);
             assert_eq!(dct.frame_buffer[dct.get_idx(0, 3)], 0x48);
             assert_eq!(dct.frame_buffer[dct.get_idx(0, 4)], 0x78);
+        }
+
+        // Draw a sprite to frame buffer that collides with a set pixel
+        #[test]
+        fn draw_collision() {
+            let mut dct = DisplayController::default();
+            // '0'
+            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+            _ = dct.draw(1, 0, sprite);
+            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+            let vf = dct.draw(1, 0, sprite);
+            // Since two sprites with identical properties were blitted to the same coordinates,
+            // there was a collision and Vf must be 1.
+            assert_eq!(vf, 1);
         }
     }
