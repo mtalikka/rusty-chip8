@@ -8,7 +8,7 @@ const REGISTER_COUNT: usize = 16;
 // Maximum 16 nested subroutines
 const STACK_SIZE: usize = 16;
 // Memory address from where the font is stored; by convention this is 0x50
-const FONT_START_ADDR: usize = 0x50;
+pub const FONT_START_ADDR: usize = 0x50;
 
 pub const FONT: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -79,7 +79,7 @@ impl Default for Cpu {
             dct: display::DisplayController::default(),
         };
         // Map font to memory
-        for i in FONT_START_ADDR..FONT.len() {
+        for i in FONT_START_ADDR..FONT_START_ADDR+FONT.len() {
             ret.mem[i] = FONT[i - FONT_START_ADDR];
         }
         ret
@@ -130,6 +130,7 @@ impl Cpu {
             0xA000..0xAFFF => result = self.ldi(inst),
             0xB000..0xBFFF => result = self.jp0(inst),
             0xC000..0xCFFF => result = self.rndx(inst),
+            0xD000..0xDFFF => result = self.drwxy(inst),
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
@@ -456,8 +457,10 @@ impl Cpu {
         let y_coord = self.reg[y] as usize;
         let mut sprite: Vec<u8> = vec![];
         for j in 0..n {
-            sprite.push(self.reg[(self.i + j as u16) as usize])
+            sprite.push(self.mem[self.i as usize + j])
         }
+        #[cfg(test)]
+        assert_eq!(sprite, [0xF0, 0x90, 0x90, 0x90, 0xF0]);
         self.reg[0xF] = self.dct.draw(x_coord, y_coord, sprite);
         Ok(())
     }
@@ -734,5 +737,17 @@ mod tests {
         c.reg[0] = 1;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.pc, 0xCBD);
+    }
+
+    // Execute the drwxy instruction
+    #[test]
+    fn exec_routine_drwxy() {
+        // Set I to '0' of the system font
+        let mut c = Cpu { i: FONT_START_ADDR as u16, ..Default::default() };
+        c.mem[0] = 0xD0;
+        c.mem[1] = 0x05;
+        c.exec_routine().expect("exec_routine failed");
+        // Frame buffer starts empty, so collision should not occur
+        assert_eq!(c.reg[0xF], 0);
     }
 }

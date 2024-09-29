@@ -122,10 +122,7 @@ impl DisplayController {
                 
             }
         }
-        match collision {
-            true => 1,
-            false => 0,
-        }
+        collision as u8
     }
 }
 
