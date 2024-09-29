@@ -1,5 +1,5 @@
-const SCREEN_WIDTH: usize = 64;
-const SCREEN_HEIGHT: usize = 32;
+pub const SCREEN_WIDTH: usize = 64;
+pub const SCREEN_HEIGHT: usize = 32;
 const NUM_COLS: usize = SCREEN_WIDTH / 8;
 const NUM_ROWS: usize = SCREEN_HEIGHT / 8;
 const PIXEL_COUNT: usize = NUM_COLS * NUM_ROWS;
@@ -30,7 +30,7 @@ impl DisplayController {
 
     // Return the index in frame_buffer of the given x and y coordinates
     fn get_idx(&self, x: usize, y: usize) -> usize {
-        (y / 8) * NUM_COLS + (x / 8)
+        (y * NUM_COLS + x) / 8
     }
 
     // XOR byte1 with byte2, retaining bits of byte1 either left or right of offset.
@@ -102,7 +102,7 @@ impl DisplayController {
         // Else, simply XOR the sprite onto the frame buffer
         else {
             // For each row (y)
-            for (i, &s_byte) in sprite.iter().enumerate() {
+            for (i, s_byte) in sprite.iter().enumerate() {
                 let y = (start_y + i) % SCREEN_HEIGHT; 
                 // Index of current chunk of frame buffer to be XORed
                 let chunk_idx: usize = self.get_idx(start_x, y);
@@ -121,3 +121,28 @@ impl DisplayController {
         }
     }
 }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use crate::cpu::FONT;
+
+        // Draw a sprite to frame buffer that evenly fits into a single byte
+        #[test]
+        fn draw_even() {
+            let mut dct = DisplayController::default();
+            let chunk_idx: usize = dct.get_idx(0, 0);
+            let orig_chunk: u8 = dct.frame_buffer[chunk_idx];
+            // '0'
+            let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
+            let vf = dct.draw(0, 0, sprite);
+            // Since frame buffer starts zeroed, there can be no collisions
+            assert_eq!(vf, 0);
+        }
+
+        // Draw a sprite to frame buffer that overflows into a second byte
+        #[test]
+        fn draw_offset() {
+
+        }
+    }

@@ -2,7 +2,7 @@ use chip8_lib::display;
 use ggez::graphics::Color;
 
 // Simulated pixel grid resolution
-pub const GRID_SIZE: (usize, usize) = (display::X_RES, display::Y_RES);
+pub const GRID_SIZE: (usize, usize) = (display::SCREEN_WIDTH, display::SCREEN_HEIGHT);
 // Size of each pixel
 pub const GRID_CELL_SIZE: (u32, u32) = (3, 3);
 // True resolution

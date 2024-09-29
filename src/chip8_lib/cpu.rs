@@ -10,7 +10,7 @@ const STACK_SIZE: usize = 16;
 // Memory address from where the font is stored; by convention this is 0x50
 const FONT_START_ADDR: usize = 0x50;
 
-const FONT: [u8; 80] = [
+pub const FONT: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
     0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
