@@ -44,11 +44,11 @@ impl DisplayController {
             Direction::Left => {
                 save_mask = 0xFF >> offset;
                 ret = byte1 ^ (byte2 << (8 - offset));
-            },
+            }
             Direction::Right => {
                 save_mask = 0xFF << (8 - offset);
                 ret = byte1 ^ (byte2 >> offset);
-            },
+            }
         }
         // Restore saved bits
         let save_bits: u8 = byte1 & save_mask;
@@ -85,10 +85,11 @@ impl DisplayController {
         if x_offset != 0 {
             // Start with first frame_buffer chunk, i.e. left side of sprite
             for (i, &s_byte) in sprite.iter().enumerate() {
-                let y = (start_y + i) % SCREEN_HEIGHT; 
+                let y = (start_y + i) % SCREEN_HEIGHT;
                 let chunk_idx: usize = self.get_idx(start_x, y);
                 let orig_chunk: u8 = self.frame_buffer[chunk_idx];
-                self.frame_buffer[chunk_idx] = self.xor_side_from_offset(orig_chunk, s_byte, x_offset, Direction::Right);
+                self.frame_buffer[chunk_idx] =
+                    self.xor_side_from_offset(orig_chunk, s_byte, x_offset, Direction::Right);
                 // Check if bit was unset
                 if !collision {
                     collision = self.bit_unset(orig_chunk, self.frame_buffer[chunk_idx]);
@@ -96,10 +97,11 @@ impl DisplayController {
             }
             // Blit second frame_buffer chunk, i.e. right side of sprite
             for (i, &s_byte) in sprite.iter().enumerate() {
-                let y = (start_y + i) % SCREEN_HEIGHT; 
+                let y = (start_y + i) % SCREEN_HEIGHT;
                 let chunk_idx: usize = self.get_idx(start_x + (8 - x_offset as usize), y);
                 let orig_chunk: u8 = self.frame_buffer[chunk_idx];
-                self.frame_buffer[chunk_idx] = self.xor_side_from_offset(orig_chunk, s_byte, x_offset, Direction::Left);
+                self.frame_buffer[chunk_idx] =
+                    self.xor_side_from_offset(orig_chunk, s_byte, x_offset, Direction::Left);
                 // Check if bit was unset
                 if !collision {
                     collision = self.bit_unset(orig_chunk, self.frame_buffer[chunk_idx]);
@@ -110,7 +112,7 @@ impl DisplayController {
         else {
             // For each row (y)
             for (i, s_byte) in sprite.iter().enumerate() {
-                let y = (start_y + i) % SCREEN_HEIGHT; 
+                let y = (start_y + i) % SCREEN_HEIGHT;
                 // Index of current chunk of frame buffer to be XORed
                 let chunk_idx: usize = self.get_idx(start_x, y);
                 let orig_chunk: u8 = self.frame_buffer[chunk_idx];
@@ -119,7 +121,6 @@ impl DisplayController {
                 if !collision {
                     collision = self.bit_unset(orig_chunk, self.frame_buffer[chunk_idx]);
                 }
-                
             }
         }
         collision as u8

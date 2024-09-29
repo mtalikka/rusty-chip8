@@ -81,7 +81,7 @@ impl Default for Cpu {
             ict: input::InputController::default(),
         };
         // Map font to memory
-        for i in FONT_START_ADDR..FONT_START_ADDR+FONT.len() {
+        for i in FONT_START_ADDR..FONT_START_ADDR + FONT.len() {
             ret.mem[i] = FONT[i - FONT_START_ADDR];
         }
         ret
@@ -133,13 +133,11 @@ impl Cpu {
             0xB000..0xBFFF => result = self.jp0(inst),
             0xC000..0xCFFF => result = self.rndx(inst),
             0xD000..0xDFFF => result = self.drwxy(inst),
-            0xE000..0xEFFF => {
-                match inst & 0x00FF {
-                    0x009E => result = self.skpx(inst),
-                    0x00A1 => result = self.sknpx(inst),
-                    _ => return Err(CpuError::UnknownOpcode)
-                }
-            }
+            0xE000..0xEFFF => match inst & 0x00FF {
+                0x009E => result = self.skpx(inst),
+                0x00A1 => result = self.sknpx(inst),
+                _ => return Err(CpuError::UnknownOpcode),
+            },
 
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
@@ -519,7 +517,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
     }
 
-    // Execute an unknown opcodeloaded to address 0x0000
+    // Execute an unknown opcode loaded to address 0x0000
     #[test]
     #[should_panic]
     fn exec_routine_failure() {
@@ -783,7 +781,10 @@ mod tests {
     #[test]
     fn exec_routine_drwxy() {
         // Set I to '0' of the system font
-        let mut c = Cpu { i: FONT_START_ADDR as u16, ..Default::default() };
+        let mut c = Cpu {
+            i: FONT_START_ADDR as u16,
+            ..Default::default()
+        };
         c.mem[0] = 0xD0;
         c.mem[1] = 0x05;
         c.exec_routine().expect("exec_routine failed");
