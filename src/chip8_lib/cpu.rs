@@ -439,6 +439,28 @@ impl Cpu {
         self.reg[x] = val & kk;
         Ok(())
     }
+
+    /// Opcode 0xDxyn - DRW Vx, Vy, nibble
+    ///
+    /// Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+    /// The interpreter reads n bytes from memory, starting at the address stored in I.
+    /// These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
+    /// Sprites are XORed onto the existing screen. If this causes any pixels to be erased,
+    /// VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is
+    /// outside the coordinates of the display, it wraps around to the opposite side of the screen.
+    fn drwxy(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let y = ((inst & 0x00F0) >> 4) as usize;
+        let n = (inst & 0x000F) as usize;
+        let x_coord = self.reg[x] as usize;
+        let y_coord = self.reg[y] as usize;
+        let mut sprite: Vec<u8> = vec![];
+        for j in 0..n {
+            sprite.push(self.reg[(self.i + j as u16) as usize])
+        }
+        self.reg[0xF] = self.dct.draw(x_coord, y_coord, sprite);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

@@ -1,14 +1,22 @@
-pub const X_RES: usize = 64;
-pub const Y_RES: usize = 32;
+const SCREEN_WIDTH: usize = 64;
+const SCREEN_HEIGHT: usize = 32;
+const NUM_COLS: usize = SCREEN_WIDTH / 8;
+const NUM_ROWS: usize = SCREEN_HEIGHT / 8;
+const PIXEL_COUNT: usize = NUM_COLS * NUM_ROWS;
 
 pub struct DisplayController {
-    frame_buffer: [u8; X_RES * Y_RES],
+    frame_buffer: [u8; PIXEL_COUNT],
+}
+
+enum Direction {
+    Left,
+    Right,
 }
 
 impl Default for DisplayController {
     fn default() -> Self {
         Self {
-            frame_buffer: [0; X_RES * Y_RES],
+            frame_buffer: [0; NUM_COLS * NUM_ROWS],
         }
     }
 }
@@ -17,6 +25,99 @@ impl DisplayController {
     pub fn clear_screen(&mut self) {
         for i in self.frame_buffer {
             self.frame_buffer[i as usize] = 0;
+        }
+    }
+
+    // Return the index in frame_buffer of the given x and y coordinates
+    fn get_idx(&self, x: usize, y: usize) -> usize {
+        (y / 8) * NUM_COLS + (x / 8)
+    }
+
+    // XOR byte1 with byte2, retaining bits of byte1 either left or right of offset.
+    // 'side' parameter refers to direction which is subject to XOR.
+    // Returns resulting byte as u8
+    fn xor_side_from_offset(&self, byte1: u8, byte2: u8, offset: u8, side: Direction) -> u8 {
+        // Create a mask to retain bits right or left of offset
+        let save_mask: u8 = match side {
+            Direction::Left => 0xFF >> offset,
+            Direction::Right => 0xFF << (8 - offset),
+        };
+        let save_bits: u8 = byte1 & save_mask;
+        let mut ret = byte1 ^ byte2;
+        // Restore saved bits
+        ret &= !save_mask;
+        ret += save_bits;
+        ret
+    }
+
+    // Returns true if a bit in byte1 has been unset in byte2
+    fn bit_unset(&self, byte1: u8, byte2: u8) -> bool {
+        for j in 0..8 {
+            // Original bit was 0 anyway, so cannot be unset
+            if (1 << j) & byte1 == 0 {
+                continue;
+            }
+            // Is frame buffer bit now at 0?
+            if (1 << j) & byte2 == 0 {
+                return true;
+            }
+        }
+        false
+    }
+
+    // Copy the given sprite to the frame buffer, starting from position (x, y)
+    // If sprite is outside bounds of display, wrap it around.
+    // If any pixel goes from 1 to 0, set Vf to 1. Else, 0.
+    // Returns value of Vf.
+    pub fn draw(&mut self, start_x: usize, start_y: usize, sprite: Vec<u8>) -> u8 {
+        assert!(start_x < SCREEN_WIDTH && start_y < SCREEN_HEIGHT);
+        let mut collision = false;
+        // Check if x will wrap to next byte in frame_buffer
+        // if it does, do XOR in two steps
+        let x_offset = (start_x % 8) as u8;
+        if x_offset != 0 {
+            // Start with first frame_buffer chunk, i.e. left side of sprite
+            for (i, &s_byte) in sprite.iter().enumerate() {
+                let y = (start_y + i) % SCREEN_HEIGHT; 
+                let chunk_idx: usize = self.get_idx(start_x, y);
+                let orig_chunk: u8 = self.frame_buffer[chunk_idx];
+                self.frame_buffer[chunk_idx] = self.xor_side_from_offset(orig_chunk, s_byte, x_offset, Direction::Right);
+                // Check if bit was unset
+                if !collision {
+                    collision = self.bit_unset(orig_chunk, self.frame_buffer[chunk_idx]);
+                }
+            }
+            // Blit second frame_buffer chunk, i.e. right side of sprite
+            for (i, &s_byte) in sprite.iter().enumerate() {
+                let y = (start_y + i) % SCREEN_HEIGHT; 
+                let chunk_idx: usize = self.get_idx(start_x + (8 - x_offset as usize), y);
+                let orig_chunk: u8 = self.frame_buffer[chunk_idx];
+                self.frame_buffer[chunk_idx] = self.xor_side_from_offset(orig_chunk, s_byte, x_offset, Direction::Left);
+                // Check if bit was unset
+                if !collision {
+                    collision = self.bit_unset(orig_chunk, self.frame_buffer[chunk_idx]);
+                }
+            }
+        }
+        // Else, simply XOR the sprite onto the frame buffer
+        else {
+            // For each row (y)
+            for (i, &s_byte) in sprite.iter().enumerate() {
+                let y = (start_y + i) % SCREEN_HEIGHT; 
+                // Index of current chunk of frame buffer to be XORed
+                let chunk_idx: usize = self.get_idx(start_x, y);
+                let orig_chunk: u8 = self.frame_buffer[chunk_idx];
+                self.frame_buffer[chunk_idx] ^= s_byte;
+                // For each pixel in row, check if bit was unset
+                if !collision {
+                    collision = self.bit_unset(orig_chunk, self.frame_buffer[chunk_idx]);
+                }
+                
+            }
+        }
+        match collision {
+            true => 1,
+            false => 0,
         }
     }
 }
