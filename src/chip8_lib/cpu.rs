@@ -1,7 +1,6 @@
-use rand::Rng;
 use thiserror::Error;
 
-use crate::display;
+use crate::{display, input};
 
 const MEMORY_SIZE: usize = 4096;
 const REGISTER_COUNT: usize = 16;
@@ -63,6 +62,8 @@ pub struct Cpu {
     stk: Vec<u16>,
     // Display controller
     dct: display::DisplayController,
+    // Input controller
+    ict: input::InputController,
 }
 
 impl Default for Cpu {
@@ -77,6 +78,7 @@ impl Default for Cpu {
             mem: [0; MEMORY_SIZE],
             stk: vec![],
             dct: display::DisplayController::default(),
+            ict: input::InputController::default(),
         };
         // Map font to memory
         for i in FONT_START_ADDR..FONT_START_ADDR+FONT.len() {
@@ -131,6 +133,14 @@ impl Cpu {
             0xB000..0xBFFF => result = self.jp0(inst),
             0xC000..0xCFFF => result = self.rndx(inst),
             0xD000..0xDFFF => result = self.drwxy(inst),
+            0xE000..0xEFFF => {
+                match inst & 0x00FF {
+                    0x009E => result = self.skpx(inst),
+                    0x00A1 => result = self.sknpx(inst),
+                    _ => return Err(CpuError::UnknownOpcode)
+                }
+            }
+
             ..=u16::MAX => return Err(CpuError::UnknownOpcode),
         }
         result
@@ -462,6 +472,36 @@ impl Cpu {
         #[cfg(test)]
         assert_eq!(sprite, [0xF0, 0x90, 0x90, 0x90, 0xF0]);
         self.reg[0xF] = self.dct.draw(x_coord, y_coord, sprite);
+        Ok(())
+    }
+
+    /// Opcode 0xEx9E - SKP Vx
+    ///
+    /// Skip next instruction if key with the value of Vx is pressed.
+    /// Checks the keyboard, and if the key corresponding to the value of Vx is
+    /// currently in the down position, PC is increased by 2.
+    fn skpx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let key = self.reg[x];
+        if self.ict.is_pressed(key) {
+            self.increment_pc()?;
+            self.increment_pc()?;
+        }
+        Ok(())
+    }
+
+    /// Opcode 0xExA1 - SKNP Vx
+    ///
+    /// Skip next instruction if key with the value of Vx is not pressed.
+    /// Checks the keyboard, and if the key corresponding to the value of Vx is
+    /// currently in the up position, PC is increased by 2.
+    fn sknpx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let key = self.reg[x];
+        if !self.ict.is_pressed(key) {
+            self.increment_pc()?;
+            self.increment_pc()?;
+        }
         Ok(())
     }
 }
