@@ -12,6 +12,9 @@ env:
 jobs:
   macos:
     runs-on: macos-latest
+    env:
+      CXXFLAGS: -I/usr/local/include/SDL2
+      LDFLAGS: -L/usr/local/lib
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
