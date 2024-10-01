@@ -17,6 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew install SDL2
+        export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib"
     - name: Build
       run: cargo build --verbose
     - name: Run tests
