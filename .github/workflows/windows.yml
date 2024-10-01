@@ -15,13 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: msys2/setup-msys2@v2
+      - name: Install dependencies
         with:
           update: true
           install: >-
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-SDL2
-      - name: Add pkg-config to path
-        run: |
+      - name: Find pkg-config path
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+      - shell: msys2 {0}
+        run:
           pacman -Fl mingw-w64-x86_64-pkg-config
       - name: Build
         run: cargo build --verbose
