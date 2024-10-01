@@ -17,6 +17,7 @@ jobs:
         shell: msys2 {0}
     steps:
       - uses: actions/checkout@v4
+      - name: Install dependencies
       - uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -25,8 +26,6 @@ jobs:
             mingw-w64-ucrt-x86_64-rust
             mingw-w64-ucrt-x86_64-pkg-config
             mingw-w64-ucrt-x86_64-SDL2
-          run:
-            pacman -Fl "*pkg-config*"
       - name: Build
         run: cargo build --verbose
       - name: Run tests
