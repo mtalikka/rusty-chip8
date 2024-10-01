@@ -1,6 +1,13 @@
+use std::env;
+
 #[cfg(target_os = "macos")]
 fn find_dependencies() {
-    println!("cargo::rustc-link-arg-bin=chip8_frontend=-lSDL2 -L$HOMEBREW_CELLAR")
+    let s: String;
+    match env::var("HOMEBREW_CELLAR") {
+        Ok(val) => s = String::from(val),
+        Err(e) => panic!("{e}")
+    };
+    println!("cargo::rustc-link-arg-bin=chip8_frontend=-lSDL2 -L{}", s);
 }
 
 #[cfg(target_os = "windows")]
