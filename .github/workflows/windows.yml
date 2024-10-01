@@ -26,7 +26,7 @@ jobs:
       - name: Find pkg-config path
         shell: msys2 {0}
         run:
-          pacman -Fl mingw-w64-x86_64-pkg-config
+          pacman -Fl pkg-config
       - name: Build
         run: cargo build --verbose
       - name: Run tests
