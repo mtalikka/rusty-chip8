@@ -63,7 +63,7 @@ pub struct Cpu {
     // Display controller
     dct: display::DisplayController,
     // Input controller
-    ict: input::InputController,
+    pub ict: input::InputController,
 }
 
 impl Default for Cpu {
