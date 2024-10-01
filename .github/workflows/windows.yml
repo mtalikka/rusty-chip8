@@ -18,7 +18,7 @@ jobs:
         with:
           update: true
           install: >-
-            sdl2
+            mingw-w64-x86_64-SDL2
       - name: Build
         run: cargo build --verbose
       - name: Run tests
