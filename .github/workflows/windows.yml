@@ -22,6 +22,7 @@ jobs:
           msystem: UCRT64
           update: true
           install: >-
+            mingw-w64-ucrt-x86_64-rust
             mingw-w64-ucrt-x86_64-pkg-config
             mingw-w64-ucrt-x86_64-SDL2
           run:
