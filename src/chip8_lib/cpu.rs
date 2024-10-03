@@ -1,4 +1,9 @@
 use thiserror::Error;
+use log::{info, warn};
+use std::fs::File;
+use std::io::Read;
+use std::sync::mpsc::Receiver;
+use std::time::{Duration, SystemTime, Instant};
 
 use crate::{display, input};
 
@@ -8,6 +13,7 @@ const REGISTER_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
 // Memory address from where the font is stored; by convention this is 0x50
 pub const FONT_START_ADDR: usize = 0x50;
+pub const PROGRAM_ENTRY_POINT: usize = 0x200;
 
 pub const FONT: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -43,6 +49,15 @@ pub enum CpuError {
     InvalidRegister,
 }
 
+// Error handling
+#[derive(Error, Debug)]
+pub enum IOError {
+    #[error("could not open file")]
+    FileOpenError,
+    #[error("could not read file")]
+    FileReadError,
+}
+
 pub struct Cpu {
     // Program counter
     pc: u16,
@@ -63,7 +78,11 @@ pub struct Cpu {
     // Display controller
     dct: display::DisplayController,
     // Input controller
-    pub ict: input::InputController,
+    ict: input::InputController,
+    // Receiver which updates input controller from main thread
+    input_receiver: Option<Receiver<u16>>,
+    // Receiver which receives message to quit from main thread
+    quit_receiver: Option<Receiver<bool>>,
 }
 
 impl Default for Cpu {
@@ -79,6 +98,8 @@ impl Default for Cpu {
             stk: vec![],
             dct: display::DisplayController::default(),
             ict: input::InputController::default(),
+            input_receiver: None,
+            quit_receiver: None,
         };
         // Map font to memory
         for i in FONT_START_ADDR..FONT_START_ADDR + FONT.len() {
@@ -89,6 +110,58 @@ impl Default for Cpu {
 }
 
 impl Cpu {
+    /// Takes a filename string and attempts to load the binary instructions
+    /// to the usual entry point, 0x200
+    pub fn load_program(&mut self, filename: &str) -> Result<(), IOError> {
+        let mut buffer: [u8; MEMORY_SIZE - PROGRAM_ENTRY_POINT] = [0; MEMORY_SIZE - PROGRAM_ENTRY_POINT];
+        let mut file = File::open(filename);
+        match file {
+            Ok(f) => { file = Ok(f) }
+            _ => {return Err(IOError::FileOpenError);}
+        }
+
+        match file.unwrap().read(&mut buffer) {
+            Ok(b) => {info!("Read {b} bytes from {filename}.");}
+            Err(_) => {return Err(IOError::FileReadError);}
+        };
+        self.mem[PROGRAM_ENTRY_POINT..MEMORY_SIZE].copy_from_slice(&buffer);
+        Ok(())
+    }
+
+    pub fn connect(&mut self, input_rx: Receiver<u16>, quit_rx: Receiver<bool>) {
+        self.input_receiver = Some(input_rx);
+        self.quit_receiver = Some(quit_rx);
+    }
+
+
+    pub fn main_loop(&mut self) {
+        'main: loop {
+            // Check for new keyboard state from main thread
+            match &self.input_receiver {
+                Some(rx) =>  {
+                    if let Ok(val) = rx.try_recv() {self.ict.update_keys(val)}
+                },
+                // Interpreter has not been connected with main thread
+                None => {
+                    warn!("Warning: input_receiver has not been connected with main thread.")
+                }
+            }
+
+            // Check for quit message from main thread
+            match &self.quit_receiver {
+                Some(rx) =>  {
+                    if rx.try_recv().is_ok() {break 'main}
+                },
+                None => {
+                    warn!("Warning: quit_receiver has not been connected with main thread.")
+                }
+            }
+            let start = Instant::now();
+
+            let end = Instant::now();
+        }
+    }
+
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {
         let result: Result<(), CpuError>;

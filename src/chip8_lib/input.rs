@@ -2,20 +2,26 @@
 pub struct InputController {
     // Bit flag representing the state of keys '0' (0x01) - 'F' (0x80)
     // Set bit means pressed, unset not pressed
-    keys: u16,
+    key_state: u16,
 }
 
 impl InputController {
     // Checks whether numerical key from 0-F is pressed
     // Assumes key is max 4 bits long
     pub fn key_pressed(&self, key: u8) -> bool {
-        (self.keys & (1 << key)) > 0
+        (self.key_state & (1 << key)) > 0
     }
     pub fn press_key(&mut self, key: u8) {
-        self.keys |= 1 << key;
+        self.key_state |= 1 << key;
     }
     pub fn unpress_key(&mut self, key: u8) {
-        self.keys ^= 1 << key;
+        self.key_state ^= 1 << key;
+    }
+    pub fn keys(&self) -> u16 {
+        self.key_state
+    }
+    pub fn update_keys(&mut self, state: u16) {
+        self.key_state = state;
     }
 }
 
@@ -25,7 +31,7 @@ mod tests {
 
     #[test]
     fn key_pressed() {
-        let ict = InputController { keys: 0xAAAA };
+        let ict = InputController { key_state: 0xAAAA };
         assert!(!ict.key_pressed(0x0));
         assert!(ict.key_pressed(0x1));
         assert!(!ict.key_pressed(0x2));
