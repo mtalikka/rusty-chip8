@@ -2,10 +2,11 @@ use thiserror::Error;
 use log::{info, warn};
 use std::fs::File;
 use std::io::Read;
+use std::rc::Rc;
 use std::sync::mpsc::Receiver;
-use std::time::{Duration, SystemTime, Instant};
 
-use crate::{display, input};
+use crate::input::InputController;
+use crate::display::DisplayController;
 
 const MEMORY_SIZE: usize = 4096;
 const REGISTER_COUNT: usize = 16;
@@ -75,14 +76,8 @@ pub struct Cpu {
     mem: [u8; MEMORY_SIZE],
     // Stack; holds maximum of 16 addresses
     stk: Vec<u16>,
-    // Display controller
-    dct: display::DisplayController,
-    // Input controller
-    ict: input::InputController,
-    // Receiver which updates input controller from main thread
-    input_receiver: Option<Receiver<u16>>,
-    // Receiver which receives message to quit from main thread
-    quit_receiver: Option<Receiver<bool>>,
+    pub dct: DisplayController,
+    pub ict: InputController,
 }
 
 impl Default for Cpu {
@@ -96,20 +91,23 @@ impl Default for Cpu {
             reg: [0; REGISTER_COUNT],
             mem: [0; MEMORY_SIZE],
             stk: vec![],
-            dct: display::DisplayController::default(),
-            ict: input::InputController::default(),
-            input_receiver: None,
-            quit_receiver: None,
+            dct: DisplayController::default(),
+            ict: InputController::default(),
         };
-        // Map font to memory
-        for i in FONT_START_ADDR..FONT_START_ADDR + FONT.len() {
-            ret.mem[i] = FONT[i - FONT_START_ADDR];
-        }
-        ret
+        &ret.load_font();
+        ret 
     }
 }
 
 impl Cpu {
+    // Map font to memory
+    fn load_font(&mut self) -> &mut Self {
+        for i in FONT_START_ADDR..FONT_START_ADDR + FONT.len() {
+            self.mem[i] = FONT[i - FONT_START_ADDR];
+        }
+        self
+    }
+
     /// Takes a filename string and attempts to load the binary instructions
     /// to the usual entry point, 0x200
     pub fn load_program(&mut self, filename: &str) -> Result<(), IOError> {
@@ -128,39 +126,6 @@ impl Cpu {
         Ok(())
     }
 
-    pub fn connect(&mut self, input_rx: Receiver<u16>, quit_rx: Receiver<bool>) {
-        self.input_receiver = Some(input_rx);
-        self.quit_receiver = Some(quit_rx);
-    }
-
-
-    pub fn main_loop(&mut self) {
-        'main: loop {
-            // Check for new keyboard state from main thread
-            match &self.input_receiver {
-                Some(rx) =>  {
-                    if let Ok(val) = rx.try_recv() {self.ict.update_keys(val)}
-                },
-                // Interpreter has not been connected with main thread
-                None => {
-                    warn!("Warning: input_receiver has not been connected with main thread.")
-                }
-            }
-
-            // Check for quit message from main thread
-            match &self.quit_receiver {
-                Some(rx) =>  {
-                    if rx.try_recv().is_ok() {break 'main}
-                },
-                None => {
-                    warn!("Warning: quit_receiver has not been connected with main thread.")
-                }
-            }
-            let start = Instant::now();
-
-            let end = Instant::now();
-        }
-    }
 
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {

@@ -1,26 +1,32 @@
 mod screen;
-mod config;
 
-use chip8_lib::cpu::Cpu;
+use crate::screen::GRID_CELL_SIZE;
+use chip8_lib::chip8::Chip8;
+use chip8_lib::display::PIXEL_COUNT;
 use chip8_lib::input::InputController;
-use crate::config::Cfg;
+use chip8_lib::config::Cfg;
 use sdl2::event::Event;
+use sdl2::render::TextureAccess;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
 use std::thread;
 use std::sync::mpsc::{self,Sender, Receiver};
 use log::warn;
 
+const CFG_FILE_PATH: &str = "../../cfg/config.ini";
+
 fn main() -> Result<(), String> {
     // Backend will run in its own separate thread, reacting to keypresses sent by message from
     // the main thread (SDL2 context). Backend will send frame buffer to frontend in similar way.
-    let mut cpu = Cpu::default();
+    let mut chip8 = Chip8::default();
+    chip8.load_config(CFG_FILE_PATH);
     let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+    let (display_tx, display_rx): (Sender<[u8; PIXEL_COUNT]>, Receiver<[u8; PIXEL_COUNT]>) = mpsc::channel();
     let (quit_tx, quit_rx): (Sender<bool>, Receiver<bool>) = mpsc::channel();
 
     thread::spawn(move || {
-        cpu.connect(input_rx, quit_rx);
-        cpu.main_loop();
+        chip8.connect(input_rx, quit_rx, display_tx);
+        chip8.main_loop();
     });
 
     let mut current_keyboard_state = InputController::default();
@@ -39,6 +45,9 @@ fn main() -> Result<(), String> {
     canvas.set_draw_color(screen::BG_COLOR);
     canvas.clear();
     canvas.present();
+    let texture_creator = canvas.texture_creator();
+    let fg_texture = &texture_creator.create_texture(None, TextureAccess::Static, GRID_CELL_SIZE.0, GRID_CELL_SIZE.1);
+    let bg_texture = &texture_creator.create_texture(None, TextureAccess::Static, GRID_CELL_SIZE.0, GRID_CELL_SIZE.1);
     let mut event_pump = sdl_context.event_pump()?;
 
     'running: loop {

@@ -2,7 +2,7 @@ pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 const NUM_COLS: usize = SCREEN_WIDTH / 8;
 const NUM_ROWS: usize = SCREEN_HEIGHT / 8;
-const PIXEL_COUNT: usize = NUM_COLS * NUM_ROWS;
+pub const PIXEL_COUNT: usize = NUM_COLS * NUM_ROWS;
 
 pub struct DisplayController {
     frame_buffer: [u8; PIXEL_COUNT],
@@ -26,50 +26,6 @@ impl DisplayController {
         for i in self.frame_buffer {
             self.frame_buffer[i as usize] = 0;
         }
-    }
-
-    // Return the index in frame_buffer of the given x and y coordinates
-    fn get_idx(&self, x: usize, y: usize) -> usize {
-        (y * NUM_COLS + x) / 8
-    }
-
-    // XOR byte1 with byte2, retaining bits of byte1 either left or right of offset.
-    // 'side' parameter refers to direction which is subject to XOR.
-    // Returns resulting byte as u8
-    fn xor_side_from_offset(&self, byte1: u8, byte2: u8, offset: u8, side: Direction) -> u8 {
-        let save_mask: u8;
-        let mut ret: u8;
-        // Create a mask to retain bits right or left of offset
-        match side {
-            Direction::Left => {
-                save_mask = 0xFF >> offset;
-                ret = byte1 ^ (byte2 << (8 - offset));
-            }
-            Direction::Right => {
-                save_mask = 0xFF << (8 - offset);
-                ret = byte1 ^ (byte2 >> offset);
-            }
-        }
-        // Restore saved bits
-        let save_bits: u8 = byte1 & save_mask;
-        ret &= !save_mask;
-        ret += save_bits;
-        ret
-    }
-
-    // Returns true if a bit in byte1 has been unset in byte2
-    fn bit_unset(&self, byte1: u8, byte2: u8) -> bool {
-        for j in 0..8 {
-            // Original bit was 0 anyway, so cannot be unset
-            if (1 << j) & byte1 == 0 {
-                continue;
-            }
-            // Is frame buffer bit now at 0?
-            if (1 << j) & byte2 == 0 {
-                return true;
-            }
-        }
-        false
     }
 
     // Copy the given sprite to the frame buffer, starting from position (x, y)
@@ -125,6 +81,50 @@ impl DisplayController {
         }
         collision as u8
     }
+
+    // Return the index in frame_buffer of the given x and y coordinates
+    fn get_idx(&self, x: usize, y: usize) -> usize {
+        (y * NUM_COLS + x) / 8
+    }
+
+    // XOR byte1 with byte2, retaining bits of byte1 either left or right of offset.
+    // 'side' parameter refers to direction which is subject to XOR.
+    // Returns resulting byte as u8
+    fn xor_side_from_offset(&self, byte1: u8, byte2: u8, offset: u8, side: Direction) -> u8 {
+        let save_mask: u8;
+        let mut ret: u8;
+        // Create a mask to retain bits right or left of offset
+        match side {
+            Direction::Left => {
+                save_mask = 0xFF >> offset;
+                ret = byte1 ^ (byte2 << (8 - offset));
+            }
+            Direction::Right => {
+                save_mask = 0xFF << (8 - offset);
+                ret = byte1 ^ (byte2 >> offset);
+            }
+        }
+        // Restore saved bits
+        let save_bits: u8 = byte1 & save_mask;
+        ret &= !save_mask;
+        ret += save_bits;
+        ret
+    }
+
+    // Returns true if a bit in byte1 has been unset in byte2
+    fn bit_unset(&self, byte1: u8, byte2: u8) -> bool {
+        for j in 0..8 {
+            // Original bit was 0 anyway, so cannot be unset
+            if (1 << j) & byte1 == 0 {
+                continue;
+            }
+            // Is frame buffer bit now at 0?
+            if (1 << j) & byte2 == 0 {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[cfg(test)]
@@ -136,7 +136,6 @@ mod tests {
     #[test]
     fn draw_even() {
         let mut dct = DisplayController::default();
-        let chunk_idx: usize = dct.get_idx(0, 0);
         // '0'
         let sprite: Vec<u8> = Vec::from(&FONT[0..5]);
         let vf = dct.draw(0, 0, sprite);
