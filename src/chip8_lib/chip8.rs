@@ -6,6 +6,9 @@ use std::sync::mpsc::{Sender, Receiver};
 use std::time::{Duration, SystemTime, Instant};
 use log::warn;
 
+// CHIP-8 runs at approx. 600hz
+const CLOCK_SPEED: Duration = Duration::from_nanos(1_666_667);
+
 #[derive(Default)]
 pub struct Chip8 {
     cpu: Cpu,
@@ -65,8 +68,12 @@ impl Chip8 {
                 }
             }
             let start = Instant::now();
-
+            self.cpu.exec_routine();
             let end = Instant::now();
+            let delta = end - start;
+            if delta < CLOCK_SPEED {
+                std::thread::sleep(CLOCK_SPEED - delta);
+            }
         }
     }
 }
