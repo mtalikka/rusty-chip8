@@ -16,6 +16,7 @@ use log::warn;
 const CFG_FILE_PATH: &str = "../../cfg/config.ini";
 
 fn main() -> Result<(), String> {
+    env_logger::init();
     // Backend will run in its own separate thread, reacting to keypresses sent by message from
     // the main thread (SDL2 context). Backend will send frame buffer to frontend in similar way.
     let mut chip8 = Chip8::default();

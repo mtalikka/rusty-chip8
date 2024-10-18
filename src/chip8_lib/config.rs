@@ -3,6 +3,25 @@ use std::{collections::HashMap, sync::Arc};
 use sdl2::keyboard::Keycode;
 use log::{debug,error,warn};
 
+const DEFAULT_LAYOUT: [Keycode; 16] = [
+    Keycode::X,
+    Keycode::NUM_1,
+    Keycode::NUM_2,
+    Keycode::NUM_3,
+    Keycode::Q,
+    Keycode::W,
+    Keycode::E,
+    Keycode::A,
+    Keycode::S,
+    Keycode::D,
+    Keycode::Z,
+    Keycode::C,
+    Keycode::NUM_4,
+    Keycode::R,
+    Keycode::F,
+    Keycode::V,
+];
+
 pub struct Cfg {
     keyboard_layout: Arc<HashMap<Keycode, u8>>,
 }
@@ -23,10 +42,29 @@ impl Cfg {
     /// Takes filepath as &String
     pub fn load_config(&mut self, filepath: &str) -> &mut Self {
         let mut config = Ini::new();
-        let map = config.load(filepath).unwrap();
         let layout: Arc<HashMap<Keycode, u8>>;
+        // If config file is not found, revert to default keyboard layout
+        let raw_map = match config.load(filepath) {
+            Ok(val) => val,
+            Err(e) => {
+                warn!("Unable to load config file: [{e}]. Using default keyboard lyout.");
+                let i: u8 = 0;
+                layout = Arc::new(DEFAULT_LAYOUT
+                    .iter()
+                    .map(
+                        |val|
+                        {
+                            (*val, i)
+                        }
+                    )
+                    .collect::<HashMap<Keycode, u8>>()
+                );
+                self.keyboard_layout = layout;
+                return self;
+            }
+        };
         let heading = "keyboard_layout";
-        let parsed_heading = map.get(heading);
+        let parsed_heading = raw_map.get(heading);
 
         match parsed_heading {
             Some(map) => {
