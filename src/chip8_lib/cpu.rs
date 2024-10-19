@@ -1,6 +1,7 @@
 use log::{info, warn};
 use std::fs::File;
 use std::io::Read;
+use std::time::Duration;
 use thiserror::Error;
 
 use crate::display::DisplayController;
@@ -13,6 +14,11 @@ const STACK_SIZE: usize = 16;
 // Memory address from where the font is stored; by convention this is 0x50
 pub const FONT_START_ADDR: usize = 0x50;
 pub const PROGRAM_ENTRY_POINT: usize = 0x200;
+
+// CHIP-8 runs at approx. 600hz
+pub const CLOCK_SPEED: Duration = Duration::from_nanos(1_000_000_000 / 600);
+// Timers run at 60hz
+pub const TIMER_TICK: i64 = 1_000_000_000 / 60;
 
 pub const FONT: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -64,8 +70,10 @@ pub struct Cpu {
     sp: i16,
     // Delay timer
     dt: u8,
+    dt_delta: i64,
     // Sound timer
     st: u8,
+    st_delta: i64,
     // Index register
     i: u16,
     // General purpose registers
@@ -85,7 +93,9 @@ impl Default for Cpu {
             pc: 0,
             sp: 0,
             dt: 0,
+            dt_delta: TIMER_TICK,
             st: 0,
+            st_delta: TIMER_TICK,
             i: 0,
             reg: [0; REGISTER_COUNT],
             mem: [0; MEMORY_SIZE],
@@ -141,6 +151,19 @@ impl Cpu {
         self.paused
     }
 
+    pub fn timer_tick(&mut self, delta: Duration) {
+        self.dt_delta -= delta.as_nanos() as i64;
+        self.st_delta -= delta.as_nanos() as i64;
+        if self.dt_delta <= 0 && self.dt > 0 {
+            self.dt_delta = TIMER_TICK;
+            self.dt -= 1;
+        }
+        if self.st_delta <= 0 && self.st > 0 {
+            self.st_delta = TIMER_TICK;
+            self.st -= 1;
+        }
+    }
+
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {
         let result: Result<(), CpuError>;
@@ -188,6 +211,18 @@ impl Cpu {
             0xE000..0xEFFF => match inst & 0x00FF {
                 0x009E => result = self.skpx(inst),
                 0x00A1 => result = self.sknpx(inst),
+                _ => return Err(CpuError::UnknownOpcode),
+            },
+            0xF000..0xFFFF => match inst & 0x00FF {
+                0x0007 => result = self.ldxdt(inst),
+                0x000A => result = self.ldxk(inst),
+                0x0015 => result = self.lddtx(inst),
+                0x0018 => result = self.ldstx(inst),
+                0x001E => result = self.addix(inst),
+                0x0029 => result = todo!(),
+                0x0033 => result = todo!(),
+                0x0055 => result = todo!(),
+                0x0065 => result = todo!(),
                 _ => return Err(CpuError::UnknownOpcode),
             },
 
@@ -567,6 +602,61 @@ impl Cpu {
         if !self.ict.key_pressed(key) {
             self.increment_pc()?;
         }
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx07 - LD Vc, DT
+    ///
+    /// Set Vx = delay timer value.
+    /// The value of DT is placed into Vx.
+    fn ldxdt(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        self.reg[x] = self.dt;
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx0A - LD Vx, K
+    ///
+    /// Wait for a key press, store the value of the key in Vx.
+    /// All execution stops until a key is pressed, then the value of that key is stored in Vx.
+    fn ldxk(&mut self, inst: u16) -> Result<(), CpuError> {
+        todo!();
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx15 - LD DT, Vx
+    ///
+    /// Set delay timer = Vx.
+    /// DT is set equal to the value of Vx.
+    fn lddtx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as u8;
+        self.dt = x;
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx18 - LD ST, Vx
+    ///
+    /// Set sound timer = Vx.
+    /// ST is set equal to the value of Vx.
+    fn ldstx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as u8;
+        self.st = x;
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx1E - ADD I, Vx
+    ///
+    /// Set I = I + Vx.
+    /// The values of I and Vx are added, and the results are stored in I.
+    fn addix(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        self.i += x as u16;
         self.increment_pc()?;
         Ok(())
     }

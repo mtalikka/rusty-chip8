@@ -1,12 +1,9 @@
 use crate::config::Cfg;
-use crate::cpu::Cpu;
+use crate::cpu::{self, Cpu};
 use crate::display::PIXEL_COUNT;
 use log::{error, info, warn};
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, Instant};
-
-// CHIP-8 runs at approx. 600hz
-const CLOCK_SPEED: Duration = Duration::from_nanos(1_666_667);
 
 #[derive(Default)]
 pub struct Chip8 {
@@ -49,6 +46,9 @@ impl Chip8 {
     }
 
     pub fn main_loop(&mut self) {
+        let mut start = Instant::now();
+        let mut end = Instant::now();
+        let mut delta: Duration;
         'main: loop {
             // Check for new keyboard state from main thread
             match &self.input_receiver {
@@ -75,8 +75,11 @@ impl Chip8 {
                     warn!("Warning: quit_receiver has not been connected with main thread.")
                 }
             }
-            let start = Instant::now();
+
+            end = Instant::now();
+            delta = end - start;
             if !self.cpu.paused() {
+                self.cpu.timer_tick(delta);
                 match self.cpu.exec_routine() {
                     Ok(_) => {},
                     Err(e) => {
@@ -85,10 +88,9 @@ impl Chip8 {
                     }
                 }
             }
-            let end = Instant::now();
-            let delta = end - start;
-            if delta < CLOCK_SPEED {
-                std::thread::sleep(CLOCK_SPEED - delta);
+            start = Instant::now();
+            if delta < cpu::CLOCK_SPEED {
+                std::thread::sleep(cpu::CLOCK_SPEED - delta);
             }
         }
     }
