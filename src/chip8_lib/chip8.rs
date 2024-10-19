@@ -1,9 +1,9 @@
 use crate::config::Cfg;
 use crate::cpu::Cpu;
 use crate::display::PIXEL_COUNT;
-use log::{info, warn};
+use log::{error, info, warn};
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 // CHIP-8 runs at approx. 600hz
 const CLOCK_SPEED: Duration = Duration::from_nanos(1_666_667);
@@ -76,7 +76,15 @@ impl Chip8 {
                 }
             }
             let start = Instant::now();
-            self.cpu.exec_routine();
+            if !self.cpu.paused() {
+                match self.cpu.exec_routine() {
+                    Ok(_) => {},
+                    Err(e) => {
+                        error!("Error while executing instruction: {e}. Pausing execution.");
+                        self.cpu.pause();
+                    }
+                }
+            }
             let end = Instant::now();
             let delta = end - start;
             if delta < CLOCK_SPEED {

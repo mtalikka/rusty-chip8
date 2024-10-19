@@ -1,8 +1,6 @@
 use log::{info, warn};
 use std::fs::File;
 use std::io::Read;
-use std::rc::Rc;
-use std::sync::mpsc::Receiver;
 use thiserror::Error;
 
 use crate::display::DisplayController;
@@ -78,6 +76,7 @@ pub struct Cpu {
     stk: Vec<u16>,
     pub dct: DisplayController,
     pub ict: InputController,
+    paused: bool,
 }
 
 impl Default for Cpu {
@@ -93,6 +92,7 @@ impl Default for Cpu {
             stk: vec![],
             dct: DisplayController::default(),
             ict: InputController::default(),
+            paused: false,
         };
         &ret.load_font();
         ret
@@ -131,6 +131,14 @@ impl Cpu {
         };
         self.mem[PROGRAM_ENTRY_POINT..MEMORY_SIZE].copy_from_slice(&buffer);
         Ok(())
+    }
+
+    pub fn pause(&mut self) {
+        self.paused = true;
+    }
+
+    pub fn paused(&self) -> bool {
+        self.paused
     }
 
     /// Run the current instruction pointed to by PC

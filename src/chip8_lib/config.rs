@@ -53,8 +53,7 @@ impl Cfg {
                 return self;
             }
         };
-        path += "/";
-        path += filepath;
+        path = path + "/" + filepath;
         let layout: HashMap<Keycode, u8>;
         // If config file is not found, revert to default keyboard layout
         let raw_map = match config.load(path) {
