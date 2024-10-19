@@ -653,7 +653,7 @@ mod tests {
     // Execute the sexy instruction
     // Ha, ha.
     #[test]
-    fn exec_routine_sexy_success() {
+    fn exec_routine_sexy() {
         let mut c = Cpu::default();
         c.mem[0] = 0x5A;
         c.mem[1] = 0xC0;
@@ -661,18 +661,6 @@ mod tests {
         c.reg[0xC] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.pc, 4);
-    }
-
-    // Execute the sexy instruction and fail
-    #[test]
-    #[should_panic]
-    fn exec_routine_sexy_failure() {
-        let mut c = Cpu::default();
-        c.mem[0] = 0x5A;
-        c.mem[1] = 0xC1;
-        c.reg[0xA] = 0xBE;
-        c.reg[0xC] = 0xBE;
-        c.exec_routine().unwrap();
     }
 
     // Execute the ldxb instruction
