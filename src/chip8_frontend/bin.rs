@@ -11,9 +11,10 @@ use sdl2::keyboard::Keycode;
 use sdl2::render::TextureAccess;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const CFG_FILE_PATH: &str = "cfg/config.ini";
+const REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 fn main() -> Result<(), String> {
     env_logger::init();
@@ -64,6 +65,7 @@ fn main() -> Result<(), String> {
     let mut event_pump = sdl_context.event_pump()?;
 
     'running: loop {
+        let start = Instant::now();
         // Handle input
         for event in event_pump.poll_iter() {
             match event {
@@ -109,7 +111,11 @@ fn main() -> Result<(), String> {
             warn!("Failed to send keyboard state to backend: {e}");
         }
 
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        let end = Instant::now();
+        let delta = end - start;
+        if delta < REFRESH_RATE {
+            std::thread::sleep(REFRESH_RATE - delta);
+        }
     }
     Ok(())
 }
