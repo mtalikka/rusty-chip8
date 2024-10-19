@@ -1,12 +1,12 @@
-use thiserror::Error;
 use log::{info, warn};
 use std::fs::File;
 use std::io::Read;
 use std::rc::Rc;
 use std::sync::mpsc::Receiver;
+use thiserror::Error;
 
-use crate::input::InputController;
 use crate::display::DisplayController;
+use crate::input::InputController;
 
 const MEMORY_SIZE: usize = 4096;
 const REGISTER_COUNT: usize = 16;
@@ -95,7 +95,7 @@ impl Default for Cpu {
             ict: InputController::default(),
         };
         &ret.load_font();
-        ret 
+        ret
     }
 }
 
@@ -111,21 +111,27 @@ impl Cpu {
     /// Takes a filename string and attempts to load the binary instructions
     /// to the usual entry point, 0x200
     pub fn load_program(&mut self, filename: &str) -> Result<(), IOError> {
-        let mut buffer: [u8; MEMORY_SIZE - PROGRAM_ENTRY_POINT] = [0; MEMORY_SIZE - PROGRAM_ENTRY_POINT];
+        let mut buffer: [u8; MEMORY_SIZE - PROGRAM_ENTRY_POINT] =
+            [0; MEMORY_SIZE - PROGRAM_ENTRY_POINT];
         let mut file = File::open(filename);
         match file {
-            Ok(f) => { file = Ok(f) }
-            _ => {return Err(IOError::FileOpenError);}
+            Ok(f) => file = Ok(f),
+            _ => {
+                return Err(IOError::FileOpenError);
+            }
         }
 
         match file.unwrap().read(&mut buffer) {
-            Ok(b) => {info!("Read {b} bytes from {filename}.");}
-            Err(_) => {return Err(IOError::FileReadError);}
+            Ok(b) => {
+                info!("Read {b} bytes from {filename}.");
+            }
+            Err(_) => {
+                return Err(IOError::FileReadError);
+            }
         };
         self.mem[PROGRAM_ENTRY_POINT..MEMORY_SIZE].copy_from_slice(&buffer);
         Ok(())
     }
-
 
     /// Run the current instruction pointed to by PC
     pub fn exec_routine(&mut self) -> Result<(), CpuError> {

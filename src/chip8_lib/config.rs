@@ -1,7 +1,7 @@
 use configparser::ini::Ini;
-use std::{collections::HashMap, env};
+use log::{debug, error, warn};
 use sdl2::keyboard::Keycode;
-use log::{debug,error,warn};
+use std::{collections::HashMap, env};
 
 const DEFAULT_LAYOUT: [Keycode; 16] = [
     Keycode::X,
@@ -29,7 +29,7 @@ pub struct Cfg {
 impl Default for Cfg {
     fn default() -> Self {
         Self {
-            keyboard_layout: HashMap::<Keycode,u8>::new(),
+            keyboard_layout: HashMap::<Keycode, u8>::new(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl Cfg {
     pub fn get_u8_from_keycode(&self, k: Keycode) -> Option<&u8> {
         if self.keyboard_layout.is_empty() {
             error!("Keyboard layout is empty");
-            return None
+            return None;
         }
         self.keyboard_layout.get(&k)
     }
@@ -47,9 +47,7 @@ impl Cfg {
     pub fn load_config(&mut self, filepath: &str) -> &mut Self {
         let mut config = Ini::new();
         let mut path: String = match env::current_dir() {
-            Ok(val) => {
-                val.display().to_string()
-            },
+            Ok(val) => val.display().to_string(),
             Err(e) => {
                 warn!("Unable to get current directory: [{e}]");
                 return self;
@@ -66,14 +64,8 @@ impl Cfg {
                 let i: u8 = 0;
                 layout = DEFAULT_LAYOUT
                     .iter()
-                    .map(
-                        |val|
-                        {
-                            (*val, i)
-                        }
-                    )
-                    .collect::<HashMap<Keycode, u8>>()
-                ;
+                    .map(|val| (*val, i))
+                    .collect::<HashMap<Keycode, u8>>();
                 self.keyboard_layout = layout;
                 return self;
             }
@@ -87,7 +79,7 @@ impl Cfg {
                 layout = map
                     .iter()
                     .map(
-                        |(key, val)| 
+                        |(key, val)|
                         {
                             let mut k = Keycode::NUM_0;
                             match Keycode::from_name(key) {
@@ -107,7 +99,7 @@ impl Cfg {
                     }
                 }
                 self.keyboard_layout = layout.clone();
-            },
+            }
             None => {
                 error!("Unable to load {heading} from config file");
             }

@@ -1,4 +1,4 @@
-use chip8_lib::display::{SCREEN_WIDTH, SCREEN_HEIGHT};
+use chip8_lib::display::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use sdl2::pixels::Color;
 
 // Simulated pixel grid resolution

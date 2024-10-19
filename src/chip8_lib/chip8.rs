@@ -1,10 +1,9 @@
-
-use crate::cpu::Cpu;
 use crate::config::Cfg;
+use crate::cpu::Cpu;
 use crate::display::PIXEL_COUNT;
-use std::sync::mpsc::{Sender, Receiver};
-use std::time::{Duration, SystemTime, Instant};
-use log::warn;
+use log::{info, warn};
+use std::sync::mpsc::{Receiver, Sender};
+use std::time::{Duration, Instant, SystemTime};
 
 // CHIP-8 runs at approx. 600hz
 const CLOCK_SPEED: Duration = Duration::from_nanos(1_666_667);
@@ -20,7 +19,6 @@ pub struct Chip8 {
     // Transmitter which sends frame buffer state
     display_transmitter: Option<Sender<[u8; PIXEL_COUNT]>>,
 }
-
 
 impl Chip8 {
     pub fn new() -> Self {
@@ -38,7 +36,12 @@ impl Chip8 {
         self
     }
 
-    pub fn connect(&mut self, input_rx: Receiver<u16>, quit_rx: Receiver<bool>, display_tx: Sender<[u8; PIXEL_COUNT]>) -> &mut Self {
+    pub fn connect(
+        &mut self,
+        input_rx: Receiver<u16>,
+        quit_rx: Receiver<bool>,
+        display_tx: Sender<[u8; PIXEL_COUNT]>,
+    ) -> &mut Self {
         self.input_receiver = Some(input_rx);
         self.quit_receiver = Some(quit_rx);
         self.display_transmitter = Some(display_tx);
@@ -49,9 +52,11 @@ impl Chip8 {
         'main: loop {
             // Check for new keyboard state from main thread
             match &self.input_receiver {
-                Some(rx) =>  {
-                    if let Ok(val) = rx.try_recv() {self.cpu.ict.update_keys(val)}
-                },
+                Some(rx) => {
+                    if let Ok(val) = rx.try_recv() {
+                        self.cpu.ict.update_keys(val)
+                    }
+                }
                 // Interpreter has not been connected with main thread
                 None => {
                     warn!("Warning: input_receiver has not been connected with main thread.")
@@ -60,9 +65,12 @@ impl Chip8 {
 
             // Check for quit message from main thread
             match &self.quit_receiver {
-                Some(rx) =>  {
-                    if rx.try_recv().is_ok() {break 'main}
-                },
+                Some(rx) => {
+                    if rx.try_recv().is_ok() {
+                        info!("CPU: Halting execution.");
+                        break 'main;
+                    }
+                }
                 None => {
                     warn!("Warning: quit_receiver has not been connected with main thread.")
                 }
