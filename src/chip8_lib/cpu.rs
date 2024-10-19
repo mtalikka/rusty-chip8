@@ -216,10 +216,12 @@ impl Cpu {
     /// then subtracts 1 from the stack pointer.
     fn ret(&mut self) -> Result<(), CpuError> {
         match self.stk.pop() {
-            Some(val) => self.pc = val,
+            Some(val) => {
+                self.pc = val;
+                self.sp -= 1;
+            }
             None => return Err(CpuError::EmptyStack),
         }
-        self.sp -= 1;
         Ok(())
     }
 
@@ -255,8 +257,8 @@ impl Cpu {
         let kk = inst as u8;
         if self.reg[x] == kk {
             self.increment_pc()?;
-            self.increment_pc()?;
         }
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -270,8 +272,8 @@ impl Cpu {
         let kk = inst & 0x00FF;
         if self.reg[x as usize] != kk as u8 {
             self.increment_pc()?;
-            self.increment_pc()?;
         }
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -285,8 +287,8 @@ impl Cpu {
         let y = ((inst & 0x00F0) >> 4) as usize;
         if self.reg[x] == self.reg[y] {
             self.increment_pc()?;
-            self.increment_pc()?;
         }
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -298,6 +300,7 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let kk = inst as u8;
         self.reg[x] = kk;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -309,6 +312,7 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let kk = inst as u8;
         self.reg[x] += kk;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -320,6 +324,7 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let y = ((inst & 0x00F0) >> 4) as usize;
         self.reg[x] = self.reg[y];
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -331,6 +336,7 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let y = ((inst & 0x00F0) >> 4) as usize;
         self.reg[x] |= self.reg[y];
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -342,6 +348,7 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let y = ((inst & 0x00F0) >> 4) as usize;
         self.reg[x] &= self.reg[y];
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -353,6 +360,7 @@ impl Cpu {
         let x = ((inst & 0x0F00) >> 8) as usize;
         let y = ((inst & 0x00F0) >> 4) as usize;
         self.reg[x] ^= self.reg[y];
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -372,6 +380,7 @@ impl Cpu {
             self.reg[0xF] = 0
         }
         self.reg[x] = res as u8;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -390,6 +399,7 @@ impl Cpu {
             self.reg[0xF] = 0
         }
         self.reg[x] = res;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -405,6 +415,7 @@ impl Cpu {
             self.reg[0xF] = 1
         }
         self.reg[x] /= 2;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -423,6 +434,7 @@ impl Cpu {
             self.reg[0xF] = 0
         }
         self.reg[x] = res;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -438,6 +450,7 @@ impl Cpu {
             self.reg[0xF] = 0
         }
         self.reg[x] = self.reg[x].wrapping_mul(2);
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -451,8 +464,8 @@ impl Cpu {
         let y = ((inst & 0x00F0) >> 4) as usize;
         if self.reg[x] != self.reg[y] {
             self.increment_pc()?;
-            self.increment_pc()?;
         }
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -462,6 +475,7 @@ impl Cpu {
     fn ldi(&mut self, inst: u16) -> Result<(), CpuError> {
         let addr = inst & 0x0FFF;
         self.i = addr;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -484,6 +498,7 @@ impl Cpu {
         let kk = inst as u8;
         let val: u8 = rand::random();
         self.reg[x] = val & kk;
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -508,6 +523,7 @@ impl Cpu {
         #[cfg(test)]
         assert_eq!(sprite, [0xF0, 0x90, 0x90, 0x90, 0xF0]);
         self.reg[0xF] = self.dct.draw(x_coord, y_coord, sprite);
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -521,8 +537,8 @@ impl Cpu {
         let key = self.reg[x];
         if self.ict.key_pressed(key) {
             self.increment_pc()?;
-            self.increment_pc()?;
         }
+        self.increment_pc()?;
         Ok(())
     }
 
@@ -536,8 +552,8 @@ impl Cpu {
         let key = self.reg[x];
         if !self.ict.key_pressed(key) {
             self.increment_pc()?;
-            self.increment_pc()?;
         }
+        self.increment_pc()?;
         Ok(())
     }
 }
@@ -553,6 +569,7 @@ mod tests {
         c.mem[0] = 0x00;
         c.mem[1] = 0xE0;
         c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2);
     }
 
     // Execute an unknown opcode loaded to address 0x0000
@@ -563,6 +580,7 @@ mod tests {
         c.mem[0] = 0xFF;
         c.mem[1] = 0xFF;
         c.exec_routine().unwrap();
+        assert_eq!(c.pc, 2);
     }
 
     // Execute a known opcode loaded to address 0xFFE,
@@ -586,7 +604,7 @@ mod tests {
         c.mem[0] = 0x1B;
         c.mem[1] = 0xEE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 0xBEE, "testing of jp instruction");
+        assert_eq!(c.pc, 0xBEE);
     }
 
     // Execute the call instruction
@@ -601,7 +619,7 @@ mod tests {
             Some(0),
             "testing if PC has been saved on stack"
         );
-        assert_eq!(c.pc, 0xBEE, "testing if new PC has been set");
+        assert_eq!(c.pc, 0xBEE);
     }
 
     // Execute the sexb instruction
@@ -612,7 +630,7 @@ mod tests {
         c.mem[0] = 0x3A;
         c.mem[1] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 4, "testing of se instruction");
+        assert_eq!(c.pc, 4);
     }
 
     // Execute the snexb instruction
@@ -623,7 +641,7 @@ mod tests {
         c.mem[0] = 0x4A;
         c.mem[1] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 0, "testing of sne instruction");
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the sexy instruction
@@ -636,7 +654,7 @@ mod tests {
         c.reg[0xA] = 0xBE;
         c.reg[0xC] = 0xBE;
         c.exec_routine().expect("exec_routine failed");
-        assert_eq!(c.pc, 4, "testing of sexy instruction");
+        assert_eq!(c.pc, 4);
     }
 
     // Execute the sexy instruction and fail
@@ -659,6 +677,7 @@ mod tests {
         c.mem[1] = 0x22;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0A], 0x22);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the addxb instruction
@@ -670,6 +689,7 @@ mod tests {
         c.reg[0xA] = 2;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0A], 0x17);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the ldxy instruction
@@ -681,6 +701,7 @@ mod tests {
         c.reg[0xC] = 2;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 2);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the orxy instruction
@@ -693,6 +714,7 @@ mod tests {
         c.reg[0xC] = 2;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 6);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the andxy instruction
@@ -705,6 +727,7 @@ mod tests {
         c.reg[0xC] = 2;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 0);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the xorxy instruction
@@ -717,6 +740,7 @@ mod tests {
         c.reg[0xC] = 3;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0B], 7);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the addxy instruction
@@ -730,6 +754,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 1);
         assert_eq!(c.reg[0x0B], 19);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the subxy instruction
@@ -743,6 +768,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 0);
         assert_eq!(c.reg[0x0B], 166);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the shrx instruction
@@ -755,6 +781,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 1);
         assert_eq!(c.reg[0x0B], 5);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the subnxy instruction
@@ -768,6 +795,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 0);
         assert_eq!(c.reg[0x0B], 166);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the shlx instruction
@@ -780,6 +808,7 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.reg[0x0F], 1);
         assert_eq!(c.reg[0x0B], 0);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the snexy instruction
@@ -802,6 +831,7 @@ mod tests {
         c.mem[1] = 0xBB;
         c.exec_routine().expect("exec_routine failed");
         assert_eq!(c.i, 0xBBB);
+        assert_eq!(c.pc, 2);
     }
 
     // Execute the jp0 instruction
@@ -828,5 +858,6 @@ mod tests {
         c.exec_routine().expect("exec_routine failed");
         // Frame buffer starts empty, so collision should not occur
         assert_eq!(c.reg[0xF], 0);
+        assert_eq!(c.pc, 2);
     }
 }
