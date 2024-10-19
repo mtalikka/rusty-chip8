@@ -28,8 +28,13 @@ pub struct Cfg {
 
 impl Default for Cfg {
     fn default() -> Self {
+        let mut i: u8 = 0;
+        let layout = DEFAULT_LAYOUT
+            .iter()
+            .map(|val| {i += 1; (*val, i - 1)})
+            .collect::<HashMap<Keycode, u8>>();
         Self {
-            keyboard_layout: HashMap::<Keycode, u8>::new(),
+            keyboard_layout: layout,
         }
     }
 }
@@ -60,10 +65,10 @@ impl Cfg {
             Ok(val) => val,
             Err(e) => {
                 warn!("Unable to load config file: [{e}]. Using default keyboard lyout.");
-                let i: u8 = 0;
+                let mut i: u8 = 0;
                 layout = DEFAULT_LAYOUT
                     .iter()
-                    .map(|val| (*val, i))
+                    .map(|val| {i += 1; (*val, i - 1)})
                     .collect::<HashMap<Keycode, u8>>();
                 self.keyboard_layout = layout;
                 return self;

@@ -5,7 +5,7 @@ use chip8_lib::chip8::Chip8;
 use chip8_lib::config::Cfg;
 use chip8_lib::display::PIXEL_COUNT;
 use chip8_lib::input::InputController;
-use log::{info, warn};
+use log::{debug, info, warn};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::render::TextureAccess;
@@ -34,7 +34,7 @@ fn main() -> Result<(), String> {
 
     let mut current_keyboard_state = InputController::default();
 
-    println!("Initializing SDL2 context...");
+    info!("Initializing SDL2 context...");
     let sdl_context = sdl2::init()?;
     let conf = Cfg::default();
     let video_subsystem = sdl_context.video()?;
@@ -83,12 +83,12 @@ fn main() -> Result<(), String> {
                     let send = &conf.get_u8_from_keycode(k.unwrap());
                     match send {
                         Some(val) => {
-                            info!("Key pressed: {val}");
+                            debug!("Key pressed: {val}");
                             current_keyboard_state.press_key(**val)
                         }
                         None => {
                             let str = k.unwrap().to_string();
-                            info!("Unmapped keypress received: {str}");
+                            debug!("Unmapped keypress received: {str}");
                         }
                     }
                 }
