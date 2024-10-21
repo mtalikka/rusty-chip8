@@ -4,7 +4,7 @@ use crate::screen::GRID_CELL_SIZE;
 use chip8_lib::chip8::Chip8;
 use chip8_lib::config::Cfg;
 use chip8_lib::display::PIXEL_COUNT;
-use chip8_lib::input::InputController;
+use chip8_lib::input::{InputController, KeyStatus};
 use log::{debug, info, warn};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -18,18 +18,18 @@ const REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000 / 60);
 
 fn main() -> Result<(), String> {
     env_logger::init();
-    info!("Chip-8 started");
     // Backend will run in its own separate thread, reacting to keypresses sent by message from
     // the main thread (SDL2 context). Backend will send frame buffer to frontend in similar way.
     let mut chip8 = Chip8::default();
     chip8.load_config(CFG_FILE_PATH);
-    let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+    let (input_tx, input_rx): (Sender<(u8, KeyStatus)>, Receiver<(u8, KeyStatus)>) = mpsc::channel();
     let (display_tx, display_rx): (Sender<[u8; PIXEL_COUNT]>, Receiver<[u8; PIXEL_COUNT]>) =
         mpsc::channel();
     let (quit_tx, quit_rx): (Sender<bool>, Receiver<bool>) = mpsc::channel();
 
     thread::spawn(move || {
         chip8.connect(input_rx, quit_rx, display_tx);
+        info!("Chip-8 connected to main thread. Starting execution loop.");
         chip8.main_loop();
     });
 
@@ -86,7 +86,9 @@ fn main() -> Result<(), String> {
                     match send {
                         Some(val) => {
                             debug!("Key pressed: {val}");
-                            current_keyboard_state.press_key(**val)
+                            if let Err(e) = input_tx.send((**val, KeyStatus::Pressed)) {
+                                warn!("Failed to send keyboard state to backend: {e}");
+                            }
                         }
                         None => {
                             let str = k.unwrap().to_string();
@@ -97,7 +99,12 @@ fn main() -> Result<(), String> {
                 Event::KeyUp { keycode: k, .. } => {
                     let send = &conf.get_u8_from_keycode(k.unwrap());
                     match send {
-                        Some(val) => current_keyboard_state.unpress_key(**val),
+                        Some(val) => {
+                            debug!("Key unpressed: {val}");
+                            if let Err(e) = input_tx.send((**val, KeyStatus::Unpressed)) {
+                                warn!("Failed to send keyboard state to backend: {e}");
+                            }
+                        },
                         None => {}
                     }
                 }
@@ -107,10 +114,7 @@ fn main() -> Result<(), String> {
 
         // TODO: Draw the screen from frame buffer
 
-        if let Err(e) = input_tx.send(current_keyboard_state.keys()) {
-            warn!("Failed to send keyboard state to backend: {e}");
-        }
-
+        // Enforce 60hz screen refresh rate
         let end = Instant::now();
         let delta = end - start;
         if delta < REFRESH_RATE {

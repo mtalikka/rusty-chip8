@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{error, info, warn};
 use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
@@ -85,6 +85,8 @@ pub struct Cpu {
     pub dct: DisplayController,
     pub ict: InputController,
     paused: bool,
+    blocking: bool,
+    reg_to_write: Option<u8>
 }
 
 impl Default for Cpu {
@@ -103,6 +105,8 @@ impl Default for Cpu {
             dct: DisplayController::default(),
             ict: InputController::default(),
             paused: false,
+            blocking: false,
+            reg_to_write: None, 
         };
         &ret.load_font();
         ret
@@ -111,11 +115,10 @@ impl Default for Cpu {
 
 impl Cpu {
     // Map font to memory
-    fn load_font(&mut self) -> &mut Self {
+    fn load_font(&mut self) {
         for i in FONT_START_ADDR..FONT_START_ADDR + FONT.len() {
             self.mem[i] = FONT[i - FONT_START_ADDR];
         }
-        self
     }
 
     /// Takes a filename string and attempts to load the binary instructions
@@ -149,6 +152,21 @@ impl Cpu {
 
     pub fn paused(&self) -> bool {
         self.paused
+    }
+
+    pub fn is_blocking(&self) -> bool {
+        self.blocking
+    }
+
+    pub fn unblock(&mut self, key: u8) {
+        match (self.reg_to_write) {
+            Some(r) => self.reg[r as usize] = key,
+            None => {
+                error!("Something has gone wrong here. Unblock called but register to write is not set.")
+            }
+        }
+        self.reg_to_write = None;
+        self.blocking = false;
     }
 
     pub fn timer_tick(&mut self, delta: Duration) {
@@ -621,9 +639,12 @@ impl Cpu {
     ///
     /// Wait for a key press, store the value of the key in Vx.
     /// All execution stops until a key is pressed, then the value of that key is stored in Vx.
+    /// 
+    /// Set some state that is checked in main loop
     fn ldxk(&mut self, inst: u16) -> Result<(), CpuError> {
-        todo!();
-        let x = ((inst & 0x0F00) >> 8) as usize;
+        let x = ((inst & 0x0F00) >> 8) as u8;
+        self.reg_to_write = Some(x);
+        self.blocking = true;
         self.increment_pc()?;
         Ok(())
     }

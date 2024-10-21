@@ -1,7 +1,8 @@
 use crate::config::Cfg;
 use crate::cpu::{self, Cpu};
 use crate::display::PIXEL_COUNT;
-use log::{error, info, warn};
+use crate::input::KeyStatus;
+use log::{debug, error, info, warn};
 use std::sync::mpsc::{Receiver, Sender};
 use std::time::{Duration, Instant};
 
@@ -10,7 +11,7 @@ pub struct Chip8 {
     cpu: Cpu,
     config: Cfg,
     // Receiver which updates input controller from main thread
-    input_receiver: Option<Receiver<u16>>,
+    input_receiver: Option<Receiver<(u8, KeyStatus)>>,
     // Receiver which receives message to quit from main thread
     quit_receiver: Option<Receiver<bool>>,
     // Transmitter which sends frame buffer state
@@ -35,7 +36,7 @@ impl Chip8 {
 
     pub fn connect(
         &mut self,
-        input_rx: Receiver<u16>,
+        input_rx: Receiver<(u8, KeyStatus)>,
         quit_rx: Receiver<bool>,
         display_tx: Sender<[u8; PIXEL_COUNT]>,
     ) -> &mut Self {
@@ -53,13 +54,17 @@ impl Chip8 {
             // Check for new keyboard state from main thread
             match &self.input_receiver {
                 Some(rx) => {
-                    if let Ok(val) = rx.try_recv() {
-                        self.cpu.ict.update_keys(val)
+                    if let Ok((key, state)) = rx.try_recv() {
+                        self.cpu.ict.update_key(key, &state);
+                        if (self.cpu.is_blocking() && state == KeyStatus::Pressed) {
+                            debug!("");
+                            self.cpu.unblock(key);
+                        }
                     }
                 }
                 // Interpreter has not been connected with main thread
                 None => {
-                    warn!("Warning: input_receiver has not been connected with main thread.")
+                    warn!("input_receiver has not been connected with main thread.")
                 }
             }
 
@@ -72,13 +77,13 @@ impl Chip8 {
                     }
                 }
                 None => {
-                    warn!("Warning: quit_receiver has not been connected with main thread.")
+                    warn!("quit_receiver has not been connected with main thread.")
                 }
             }
 
             end = Instant::now();
             delta = end - start;
-            if !self.cpu.paused() {
+            if !self.cpu.paused() && !self.cpu.is_blocking() {
                 self.cpu.timer_tick(delta);
                 match self.cpu.exec_routine() {
                     Ok(_) => {},

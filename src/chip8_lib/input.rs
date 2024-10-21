@@ -1,3 +1,9 @@
+#[derive(PartialEq, Eq)]
+pub enum KeyStatus {
+    Pressed,
+    Unpressed,
+}
+
 #[derive(Default)]
 pub struct InputController {
     // Bit flag representing the state of keys '0' (0x01) - 'F' (0x80)
@@ -20,8 +26,11 @@ impl InputController {
     pub fn keys(&self) -> u16 {
         self.key_state
     }
-    pub fn update_keys(&mut self, state: u16) {
-        self.key_state = state;
+    pub fn update_key(&mut self, key: u8, state: &KeyStatus) {
+        match state {
+            KeyStatus::Pressed => self.press_key(key),
+            KeyStatus::Unpressed => self.unpress_key(key),
+        }
     }
 }
 
