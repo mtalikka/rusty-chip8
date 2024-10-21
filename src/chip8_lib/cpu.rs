@@ -677,7 +677,7 @@ impl Cpu {
     /// The values of I and Vx are added, and the results are stored in I.
     fn addix(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
-        self.i += x as u16;
+        self.i += self.reg[x] as u16;
         self.increment_pc()?;
         Ok(())
     }
