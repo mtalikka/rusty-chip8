@@ -237,10 +237,10 @@ impl Cpu {
                 0x0015 => result = self.lddtx(inst),
                 0x0018 => result = self.ldstx(inst),
                 0x001E => result = self.addix(inst),
-                0x0029 => result = todo!(),
-                0x0033 => result = todo!(),
-                0x0055 => result = todo!(),
-                0x0065 => result = todo!(),
+                0x0029 => result = self.ldfx(inst),
+                0x0033 => result = self.ldbx(inst),
+                0x0055 => result = self.ldiax(inst),
+                0x0065 => result = self.ldxia(inst), 
                 _ => return Err(CpuError::UnknownOpcode),
             },
 
@@ -678,6 +678,61 @@ impl Cpu {
     fn addix(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
         self.i += self.reg[x] as u16;
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx29 - LD F, Vx
+    ///
+    /// Set I = location of sprite for digit Vx.
+    /// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx.
+    fn ldfx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        self.i = FONT_START_ADDR as u16 + x as u16;
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx33 - LD B, Vx
+    ///
+    /// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+    /// The interpreter takes the decimal value of Vx, and places the hundreds digit in memory at location in I,
+    /// the tens digit at location I+1, and the ones digit at location I+2.
+    fn ldbx(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        let mut num = self.reg[x];
+        let mut j = 3;
+        while num != 0 && j != 0 {
+            j -= 1;
+            self.mem[self.i as usize + j] = num % 10;
+            num /= 10;
+        }
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx55 - LD [I], Vx
+    ///
+    /// Store registers V0 through Vx in memory starting at location I.
+    /// The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
+    fn ldiax(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        for j in 0..x {
+            self.mem[self.i as usize + j] = self.reg[j]
+        }
+        self.increment_pc()?;
+        Ok(())
+    }
+
+    /// Opcode 0xFx65 - LD Vx, [I]
+    ///
+    /// Read registers V0 through Vx from memory starting at location I.
+    /// The interpreter reads values from memory starting at location I into registers V0 through Vx.
+    fn ldxia(&mut self, inst: u16) -> Result<(), CpuError> {
+        let x = ((inst & 0x0F00) >> 8) as usize;
+        for j in 0..x {
+            self.reg[j] = self.mem[self.i as usize + j]
+        }
         self.increment_pc()?;
         Ok(())
     }
