@@ -688,7 +688,7 @@ impl Cpu {
     /// The value of I is set to the location for the hexadecimal sprite corresponding to the value of Vx.
     fn ldfx(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
-        self.i = FONT_START_ADDR as u16 + x as u16;
+        self.i = FONT_START_ADDR as u16 + (self.reg[x] * 5) as u16;
         self.increment_pc()?;
         Ok(())
     }
@@ -717,7 +717,7 @@ impl Cpu {
     /// The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
     fn ldiax(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
-        for j in 0..x {
+        for j in 0..x + 1 {
             self.mem[self.i as usize + j] = self.reg[j]
         }
         self.increment_pc()?;
@@ -730,7 +730,7 @@ impl Cpu {
     /// The interpreter reads values from memory starting at location I into registers V0 through Vx.
     fn ldxia(&mut self, inst: u16) -> Result<(), CpuError> {
         let x = ((inst & 0x0F00) >> 8) as usize;
-        for j in 0..x {
+        for j in 0..x + 1{
             self.reg[j] = self.mem[self.i as usize + j]
         }
         self.increment_pc()?;
@@ -1027,5 +1027,83 @@ mod tests {
         // Frame buffer starts empty, so collision should not occur
         assert_eq!(c.reg[0xF], 0);
         assert_eq!(c.pc, 2);
+    }
+
+    // Execute the addix instruction
+    #[test]
+    fn exec_routine_addix() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xF0;
+        c.mem[1] = 0x1E;
+        c.i = 0x700;
+        c.reg[0] = 5;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.i as usize, 0x705);
+    }
+
+    // Execute the ldfx instruction
+    #[test]
+    fn exec_routine_ldfx() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xF0;
+        c.mem[1] = 0x29;
+        c.reg[0] = 1;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.i as usize, 0x55);
+        c.mem[2] = 0xF0;
+        c.mem[3] = 0x29;
+        c.reg[0] = 2;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 4);
+        assert_eq!(c.i as usize, 0x5A);
+    }
+
+    // Execute the ldbx instruction
+    #[test]
+    fn exec_routine_ldbx() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xF0;
+        c.mem[1] = 0x33;
+        c.reg[0] = 123;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.mem[c.i as usize], 1);
+        assert_eq!(c.mem[c.i as usize + 1], 2);
+        assert_eq!(c.mem[c.i as usize + 2], 3);
+    }
+
+    // Execute the ldiax instruction
+    #[test]
+    fn exec_routine_ldiax() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xF2;
+        c.mem[1] = 0x55;
+        c.reg[0] = 1;
+        c.reg[1] = 2;
+        c.reg[2] = 3;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.mem[c.i as usize], 1);
+        assert_eq!(c.mem[c.i as usize + 1], 2);
+        assert_eq!(c.mem[c.i as usize + 2], 3);
+    }
+
+    // Execute the ldxia instruction
+    #[test]
+    fn exec_routine_ldxia() {
+        let mut c = Cpu::default();
+        c.mem[0] = 0xF2;
+        c.mem[1] = 0x65;
+        c.i = 0x700;
+        c.mem[0x700] = 1;
+        c.mem[0x701] = 2;
+        c.mem[0x702] = 3;
+        c.exec_routine().expect("exec_routine failed");
+        assert_eq!(c.pc, 2);
+        assert_eq!(c.reg[0], 1);
+        assert_eq!(c.reg[1], 2);
+        assert_eq!(c.reg[2], 3);
     }
 }
