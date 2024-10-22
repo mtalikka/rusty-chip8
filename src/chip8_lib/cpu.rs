@@ -159,7 +159,7 @@ impl Cpu {
     }
 
     pub fn unblock(&mut self, key: u8) {
-        match (self.reg_to_write) {
+        match self.reg_to_write {
             Some(r) => self.reg[r as usize] = key,
             None => {
                 error!("Something has gone wrong here. Unblock called but register to write is not set.")

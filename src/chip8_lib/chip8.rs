@@ -56,7 +56,7 @@ impl Chip8 {
                 Some(rx) => {
                     if let Ok((key, state)) = rx.try_recv() {
                         self.cpu.ict.update_key(key, &state);
-                        if (self.cpu.is_blocking() && state == KeyStatus::Pressed) {
+                        if self.cpu.is_blocking() && state == KeyStatus::Pressed {
                             debug!("");
                             self.cpu.unblock(key);
                         }
